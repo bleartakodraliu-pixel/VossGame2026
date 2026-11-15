@@ -78,6 +78,17 @@ namespace Voss.Core
 #endif
         }
 
+        /// <summary>Skips story cards: Space or Enter.</summary>
+        public static bool SkipPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var kb = Keyboard.current;
+            return kb != null && (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame);
+#else
+            return Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter);
+#endif
+        }
+
         public static bool AnyKeyPressed()
         {
 #if ENABLE_INPUT_SYSTEM

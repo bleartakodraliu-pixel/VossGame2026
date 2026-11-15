@@ -11,7 +11,9 @@ namespace Voss.EditorTools
         public static void Build(Scene scene)
         {
             K.DarkAmbient(new Color(0.02f, 0.02f, 0.03f));
+            K.Fog(new Color(0.01f, 0.01f, 0.015f), 0.04f);
             var root = K.Group(null, "MainMenu");
+            K.GlobalVolume(root.transform, K.HorrorProfile("Menu", 0.8f, 0.4f, 0.35f, new Color(0.9f, 0.95f, 1f)));
 
             // Set
             K.Box(root.transform, "StageFloor", new Vector3(0f, -0.1f, 0f), new Vector3(14f, 0.2f, 10f), K.Mats.Wood);
@@ -37,6 +39,7 @@ namespace Voss.EditorTools
             cam.backgroundColor = Color.black;
             cam.fieldOfView = 50f;
             camGo.AddComponent<AudioListener>();
+            K.EnablePostProcessing(cam);
 
             var controller = root.AddComponent<MainMenuController>();
             controller.Configure(rig.transform);

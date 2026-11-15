@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Voss.Atmosphere;
+using Voss.Audio;
 using Voss.Interaction;
 using Voss.Narrative;
 using K = Voss.EditorTools.VossBuildKit;
@@ -12,7 +14,9 @@ namespace Voss.EditorTools
         public static void Build(Scene scene)
         {
             K.DarkAmbient(new Color(0.015f, 0.015f, 0.02f));
+            K.Fog(new Color(0.01f, 0.01f, 0.012f), 0.12f);
             var root = K.Group(null, "Invitation");
+            K.GlobalVolume(root.transform, K.HorrorProfile("Invitation", 0.6f, 0.45f, 0.45f, new Color(1f, 0.95f, 0.88f)));
 
             // Room shell (barely visible, keeps the space from feeling like a void)
             K.Box(root.transform, "Floor", new Vector3(0f, -0.1f, 0f), new Vector3(8f, 0.2f, 8f), K.Mats.Floor);
@@ -37,8 +41,23 @@ namespace Voss.EditorTools
             K.Text3D(ticket.transform, "Back", "You watched me disappear.\nNow find out how.", new Vector3(0f, -0.0025f, 0f), Vector3.down, 0.010f, new Color(0.12f, 0.08f, 0.05f), TextAnchor.MiddleCenter, FontStyle.Italic, 64, Vector3.forward);
             var ticketRelay = ticket.AddComponent<RelayInteractable>();
 
+            // An old newspaper beside the envelope: the player was there that night, and kept it.
+            var paper = K.Group(root.transform, "OldNewspaper", new Vector3(0.5f, 0.803f, 0.08f));
+            paper.transform.localRotation = Quaternion.Euler(0f, -18f, 0f);
+            K.Box(paper.transform, "Sheet", Vector3.zero, new Vector3(0.28f, 0.004f, 0.36f), K.Mats.OldPaper, false);
+            K.Text3D(paper.transform, "Front", "THE EVENING COURIER\n\nILLUSIONIST VANISHES\nBEFORE 400 WITNESSES\n\nVoss steps into a sealed\nglass chamber. Seven seconds\nof darkness. Then nothing.\n\nPolice: \"No trace.\"",
+                new Vector3(0f, 0.0025f, 0f), Vector3.up, 0.0145f, new Color(0.1f, 0.08f, 0.06f), TextAnchor.MiddleCenter, FontStyle.Bold, 64, Vector3.forward);
+            var paperCol = paper.AddComponent<BoxCollider>();
+            paperCol.size = new Vector3(0.28f, 0.03f, 0.36f);
+            var paperInspect = paper.AddComponent<InspectableObject>();
+            paperInspect.Prompt = "Read newspaper";
+            paperInspect.Note = "You kept it. All these years, you kept it.";
+
             // Lighting: one hard key from above-left, a faint cold fill.
-            K.SpotLight(root.transform, "KeyLight", new Vector3(-0.8f, 2.2f, -0.6f), new Vector3(0f, 0.8f, 0f), new Color(1f, 0.93f, 0.8f), 10f, 6f, 55f);
+            var key = K.SpotLight(root.transform, "KeyLight", new Vector3(-0.8f, 2.2f, -0.6f), new Vector3(0f, 0.8f, 0f), new Color(1f, 0.93f, 0.8f), 10f, 6f, 55f);
+            key.gameObject.AddComponent<LightFlicker>().Configure(0.05f, new Vector2(10f, 20f), 0.15f);
+            K.Group(root.transform, "Soundscape").AddComponent<AmbientSoundscape>().Configure(
+                new[] { SfxId.Creak, SfxId.Drip }, new Vector2(14f, 28f), new Vector2(3f, 6f), 1f, true, 0.2f);
             K.PointLight(root.transform, "ColdFill", new Vector3(1.5f, 1.2f, 1.0f), new Color(0.5f, 0.65f, 0.9f), 0.35f, 5f);
 
             // Player: seated viewpoint, look only.

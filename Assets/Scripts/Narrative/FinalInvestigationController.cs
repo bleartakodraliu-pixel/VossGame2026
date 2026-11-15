@@ -11,8 +11,9 @@ using Voss.UI;
 namespace Voss.Narrative
 {
     /// <summary>
-    /// THE REAL FINAL TEST. Illuminates all three rooms with their principles, switches on the
-    /// performance reconstruction and arms the final question terminal.
+    /// THE REAL FINAL TEST. Illuminates all three rooms, opens the way back to the hall (whose walls
+    /// carry the three principles), switches on the performance reconstruction and arms the final
+    /// question terminal.
     /// </summary>
     public class FinalInvestigationController : MonoBehaviour
     {
@@ -25,7 +26,8 @@ namespace Voss.Narrative
         [SerializeField] private GameObject memoryPrinciple;
         [SerializeField] private VideoInvestigationController video;
         [SerializeField] private FinalQuestionTerminal questionTerminal;
-        [SerializeField] private DoorController memoryDoor;
+        [SerializeField] private List<DoorController> wayBackDoors = new List<DoorController>();
+        [SerializeField] private List<Light> wayBackLights = new List<Light>();
 
         private bool begun;
 
@@ -33,7 +35,7 @@ namespace Voss.Narrative
 
         public void Configure(PerceptionPuzzle p, List<Light> reason, List<Light> memory, List<Light> hall,
             GameObject principleP, GameObject principleR, GameObject principleM,
-            VideoInvestigationController videoController, FinalQuestionTerminal terminal, DoorController memDoor)
+            VideoInvestigationController videoController, FinalQuestionTerminal terminal, List<DoorController> doors, List<Light> corridorLights)
         {
             perception = p;
             reasonLights = reason;
@@ -44,12 +46,14 @@ namespace Voss.Narrative
             memoryPrinciple = principleM;
             video = videoController;
             questionTerminal = terminal;
-            memoryDoor = memDoor;
+            wayBackDoors = doors ?? new List<DoorController>();
+            wayBackLights = corridorLights ?? new List<Light>();
         }
 
         private void Start()
         {
             SetPrinciples(false);
+            foreach (var l in wayBackLights) if (l != null) l.enabled = false;
             var gm = GameManager.Instance;
             if (gm != null && gm.State.MetaCodeSolved && !gm.State.FinalTruthSolved)
             {
@@ -93,7 +97,7 @@ namespace Voss.Narrative
             {
                 gm.VossSays("Three principles. One performance. Watch it again.", 4f);
                 yield return new WaitForSeconds(4.2f);
-                gm.VossSays("The screen in the hall is waiting for you.", 3.5f);
+                gm.VossSays("The way back is open. The screen in the hall is waiting for you.", 4f);
             }
             gm?.Audio.PlayMusic(MusicId.Drone, 6f);
         }
@@ -105,7 +109,8 @@ namespace Voss.Narrative
             foreach (var l in memoryLights) if (l != null) { l.enabled = true; l.color = new Color(0.85f, 0.92f, 1f); }
             foreach (var l in hallLights) if (l != null) l.enabled = true;
             SetPrinciples(true);
-            if (memoryDoor != null) { memoryDoor.UnlockManually(); memoryDoor.Open(); }
+            foreach (var l in wayBackLights) if (l != null) l.enabled = true;
+            foreach (var d in wayBackDoors) if (d != null) { d.UnlockManually(); d.Open(); }
             video?.MakeAvailable();
             questionTerminal?.Arm();
         }

@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Voss.Atmosphere;
+using Voss.Audio;
 using Voss.Core;
 using Voss.Interaction;
 using Voss.Narrative;
@@ -18,7 +20,11 @@ namespace Voss.EditorTools
         public static void Build(Scene scene)
         {
             K.DarkAmbient(new Color(0.025f, 0.022f, 0.02f));
+            K.Fog(new Color(0.02f, 0.018f, 0.016f), 0.03f);
             var root = K.Group(null, "EmptyTheatre").transform;
+            K.GlobalVolume(root, K.HorrorProfile("Theatre", 0.8f, 0.38f, 0.35f, new Color(1f, 0.95f, 0.88f)));
+            K.Group(root, "Soundscape").AddComponent<AmbientSoundscape>().Configure(
+                new[] { SfxId.Creak, SfxId.Creak, SfxId.DistantSteps }, new Vector2(12f, 25f), new Vector2(5f, 10f), 1f, true, 0.25f);
 
             // Shell
             K.FloorAndCeiling(root, "House", new Vector2(-14f, -22f), new Vector2(14f, 12f), H, K.Mats.Wood, K.Mats.Ceiling);

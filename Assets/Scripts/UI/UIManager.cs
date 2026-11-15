@@ -35,6 +35,7 @@ namespace Voss.UI
         private ChoicePanel failure;
         private ChoicePanel mainMenu;
         private VideoControlsPanel videoControls;
+        private StoryPanel story;
 
         private Coroutine attemptsRoutine;
         private Coroutine messageRoutine;
@@ -44,6 +45,7 @@ namespace Voss.UI
         public KeypadPanel Keypad => keypad;
         public ChoicePanel Choice => choice;
         public VideoControlsPanel VideoControls => videoControls;
+        public StoryPanel Story => story;
         public bool EvidenceEnabled { get => evidenceEnabled; set => evidenceEnabled = value; }
 
         public bool IsModalOpen =>
@@ -52,7 +54,7 @@ namespace Voss.UI
         public bool IsFailureOpen => failure.IsOpen;
 
         /// <summary>True while gameplay input should be suppressed (any modal, fade, or free cursor).</summary>
-        public bool BlocksGameplay => IsModalOpen || cursorFree || fade.color.a > 0.95f;
+        public bool BlocksGameplay => IsModalOpen || cursorFree || fade.color.a > 0.95f || story.IsOpen;
 
         private void Awake()
         {
@@ -107,6 +109,7 @@ namespace Voss.UI
             failure = new ChoicePanel(t, "FailurePanel");
             mainMenu = new ChoicePanel(t, "MainMenuPanel");
             videoControls = new VideoControlsPanel(t);
+            story = new StoryPanel(t);
 
             // Fade is last so it sits on top of everything.
             fade = UIFactory.Panel(t, "Fade", Color.black).GetComponent<Image>();
@@ -304,6 +307,7 @@ namespace Voss.UI
             if (messageRoutine != null) StopCoroutine(messageRoutine);
             attemptsRoutine = null;
             messageRoutine = null;
+            story.Close();
             CloseGameplayModals();
             failure.Close();
             mainMenu.Close();

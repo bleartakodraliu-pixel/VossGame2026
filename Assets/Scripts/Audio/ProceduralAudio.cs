@@ -31,6 +31,15 @@ namespace Voss.Audio
                 case SfxId.Click:           return Build("sfx_click", 0.08f, t => Square(t, 2000f) * 0.15f * Env(t, 0.001f, 0.05f));
                 case SfxId.Paper:           return Build("sfx_paper", 0.3f, t => Noise(t) * 0.12f * Env(t, 0.02f, 0.25f));
                 case SfxId.PowerDown:       return Build("sfx_powerdown", 1.5f, t => Sine(t, 300f * Mathf.Exp(-t * 2.5f)) * 0.3f * Env(t, 0.01f, 1.3f));
+                case SfxId.Drip:            return Build("sfx_drip", 0.5f, t => Sine(t, 700f + 1100f * (1f - Mathf.Exp(-t * 60f))) * Mathf.Exp(-t * 22f) * 0.35f + Sine(t, 1500f) * Env(t - 0.2f, 0.002f, 0.08f) * 0.06f);
+                case SfxId.Creak:           return Creak();
+                case SfxId.Whisper:         return Whisper();
+                case SfxId.Knock:           return Build("sfx_knock", 1.0f, t => KnockHit(t) + KnockHit(t - 0.3f) + KnockHit(t - 0.6f));
+                case SfxId.DistantSteps:    return DistantSteps();
+                case SfxId.DoorSlam:        return Build("sfx_doorslam", 1.2f, t => (Sine(t, 55f) * 0.7f + Sine(t, 110f) * 0.25f) * Mathf.Exp(-t * 6f) + Noise(t) * 0.45f * Mathf.Exp(-t * 40f) + Noise(t) * 0.06f * Env(t - 0.08f, 0.01f, 0.5f));
+                case SfxId.RoomTone:        return RoomTone();
+                case SfxId.ClockTick:       return Build("sfx_tick", 0.06f, t => (Sine(t, 3200f) * 0.25f + Noise(t) * 0.15f) * Mathf.Exp(-t * 160f));
+                case SfxId.Static:          return Build("sfx_static", 2f, t => Noise(t) * 0.1f + Square(t, 60f) * 0.015f);
                 default:                    return Build("sfx_default", 0.2f, t => Sine(t, 440f) * 0.2f * Env(t, 0.01f, 0.15f));
             }
         }
@@ -49,6 +58,78 @@ namespace Voss.Audio
                     return null;
             }
         }
+
+        // ---------------------------------------------------------- atmosphere
+
+        /// <summary>Stick-slip pulse train: an old door or floorboard under weight.</summary>
+        private static AudioClip Creak()
+        {
+            var r = new System.Random(5);
+            float phase = 0f;
+            return Build("sfx_creak", 1.4f, t =>
+            {
+                float hz = 38f + 25f * Mathf.Sin(t * 2.2f) + (float)r.NextDouble() * 10f;
+                phase += hz / SampleRate;
+                if (phase >= 1f) phase -= 1f;
+                float pulse = Mathf.Exp(-phase * 14f);
+                float body = Sine(t, 180f + 40f * Mathf.Sin(t * 3f)) * 0.3f;
+                return (pulse * 0.5f + body * pulse) * Env(t, 0.15f, 1.2f) * 0.45f;
+            });
+        }
+
+        /// <summary>Breathy noise shaped into syllable-like bursts. Never intelligible, always human.</summary>
+        private static AudioClip Whisper()
+        {
+            var r = new System.Random(77);
+            float lp = 0f, prev = 0f;
+            float[] onsets = { 0.05f, 0.3f, 0.52f, 0.9f, 1.12f };
+            return Build("sfx_whisper", 1.6f, t =>
+            {
+                float n = (float)(r.NextDouble() * 2.0 - 1.0);
+                lp += (n - lp) * 0.35f;
+                float hp = lp - prev;
+                prev = lp;
+                float env = 0f;
+                foreach (float s in onsets) env += Bump(t - s, 0.22f);
+                return hp * 1.6f * env * (0.6f + 0.4f * Mathf.Sin(t * 9f)) * 0.55f;
+            });
+        }
+
+        private static AudioClip DistantSteps()
+        {
+            float lp = 0f;
+            return Build("sfx_distantsteps", 2.6f, t =>
+            {
+                float env = 0f;
+                for (int i = 0; i < 4; i++)
+                {
+                    float s = t - 0.15f - i * 0.6f;
+                    if (s >= 0f) env += Mathf.Exp(-s * 25f);
+                }
+                lp += (Noise(t) - lp) * 0.08f;
+                return (lp * 2.2f + Sine(t, 60f) * 0.25f) * env * 0.5f;
+            });
+        }
+
+        /// <summary>Seamless 8 s loop: mains hum and ventilation rumble with a slow swell.</summary>
+        private static AudioClip RoomTone()
+        {
+            float lp = 0f;
+            return Build("sfx_roomtone", 8f, t =>
+            {
+                lp += (Noise(t) - lp) * 0.02f;
+                float swell = 0.75f + 0.25f * Mathf.Sin(2f * Mathf.PI * t / 8f);
+                return (Sine(t, 50f) * 0.1f + Sine(t, 100f) * 0.05f + Sine(t, 150f) * 0.02f + lp * 0.9f) * swell;
+            });
+        }
+
+        private static float KnockHit(float t)
+        {
+            if (t < 0f) return 0f;
+            return (Sine(t, 95f) * 0.55f + Sine(t, 190f) * 0.2f) * Mathf.Exp(-t * 32f) + Noise(t) * 0.25f * Mathf.Exp(-t * 120f);
+        }
+
+        private static float Bump(float t, float length) => (t <= 0f || t >= length) ? 0f : Mathf.Sin(Mathf.PI * t / length);
 
         // ------------------------------------------------------------ helpers
 

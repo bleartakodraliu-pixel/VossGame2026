@@ -21,7 +21,17 @@ namespace Voss.Audio
         VossVoice,
         Click,
         Paper,
-        PowerDown
+        PowerDown,
+        // Atmosphere (appended so existing AudioLibrary entries keep their ids)
+        Drip,
+        Creak,
+        Whisper,
+        Knock,
+        DistantSteps,
+        DoorSlam,
+        RoomTone,
+        ClockTick,
+        Static
     }
 
     public enum MusicId

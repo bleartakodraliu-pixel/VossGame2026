@@ -15,6 +15,7 @@ namespace Voss.UI
         private readonly Text cardTitle;
         private readonly Text cardText;
         private readonly Text hint;
+        private readonly Text objective;
         private readonly List<Button> listButtons = new List<Button>();
         private EvidenceItem selected;
         private bool showingBack;
@@ -31,6 +32,9 @@ namespace Voss.UI
 
             var header = UIFactory.Label(card, "Header", "EVIDENCE", 26, UIFactory.Brass, TextAnchor.MiddleLeft, FontStyle.Bold);
             UIFactory.Place(header.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(28f, -20f), new Vector2(400f, 40f));
+
+            objective = UIFactory.Label(card, "Objective", "", 15, UIFactory.Ink, TextAnchor.UpperRight, FontStyle.Italic);
+            UIFactory.Place(objective.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-28f, -26f), new Vector2(540f, 44f));
 
             listHost = UIFactory.Empty(card, "List");
             UIFactory.Place(listHost, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(28f, -76f), new Vector2(260f, 380f));
@@ -57,6 +61,8 @@ namespace Voss.UI
 
         public void Open()
         {
+            var gm = GameManager.Instance;
+            objective.text = gm != null ? "OBJECTIVE:  " + Objectives.For(gm.State, gm.Evidence.Has) : string.Empty;
             Rebuild();
             root.SetActive(true);
             GameManager.Instance?.Audio.Play(SfxId.Paper, 0.6f);

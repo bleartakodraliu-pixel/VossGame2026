@@ -67,6 +67,9 @@ namespace Voss.Audio
             AudioSource.PlayClipAtPoint(clip, position, vol * volumeScale);
         }
 
+        /// <summary>Raw clip for components that own their own AudioSource (loops, ticking props).</summary>
+        public AudioClip GetClip(SfxId id, out float volume) => GetSfx(id, out volume);
+
         private AudioClip GetSfx(SfxId id, out float volume)
         {
             volume = 1f;

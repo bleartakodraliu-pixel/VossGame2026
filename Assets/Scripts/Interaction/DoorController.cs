@@ -151,7 +151,8 @@ namespace Voss.Interaction
             if (sealDoor)
             {
                 sealedByRoom = true;
-                GameManager.Instance?.Audio.PlayAt(SfxId.DoorLock, transform.position, 1f);
+                GameManager.Instance?.Audio.PlayAt(SfxId.DoorSlam, transform.position, 1f);
+                GameManager.Instance?.Audio.PlayAt(SfxId.DoorLock, transform.position, 0.8f);
             }
         }
 

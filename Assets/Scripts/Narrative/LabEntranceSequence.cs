@@ -32,8 +32,9 @@ namespace Voss.Narrative
         {
             "VOSS EXPERIMENT ACTIVATED",
             "SUBJECT DETECTED",
-            "THREE TESTS",
-            "FIVE FAILURES ALLOWED",
+            "THREE TESTS:",
+            "PERCEPTION  REASON  MEMORY",
+            "FIVE MISTAKES ALLOWED",
             "TRUST NOTHING"
         };
 
@@ -127,15 +128,25 @@ namespace Voss.Narrative
             UIManager.Instance?.ShowAttempts(gm != null ? gm.State.AttemptsRemaining : GameState.MaxAttempts, 5f);
             yield return new WaitForSeconds(7f);
 
-            // Cold working light returns; emergency lights stay as low red accents.
+            // Cold working light returns at half strength; emergency lights stay as low red accents.
             foreach (var l in hallLights)
             {
                 if (l == null) continue;
                 l.enabled = true;
+                l.intensity *= 0.6f;
             }
             foreach (var l in emergencyLights) if (l != null) l.intensity *= 0.35f;
             gm?.Audio.PlayMusic(MusicId.Drone, 4f);
-            gm?.VossSays("Three doors. One of them is already open to you.", 3.5f);
+            if (gm != null)
+            {
+                gm.VossSays("Welcome back. You have seen my work before. From your seat.", 4f);
+                yield return new WaitForSeconds(4.4f);
+                gm.VossSays("Every wrong answer is recorded. Five, and we begin again.", 4f);
+                yield return new WaitForSeconds(4.4f);
+                gm.VossSays("One door is open to you. The others will open when you have earned them.", 4f);
+                yield return new WaitForSeconds(4.4f);
+                gm.Subtitles.Show("(TAB - evidence and current objective)", 4f);
+            }
         }
     }
 }
