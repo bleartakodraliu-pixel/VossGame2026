@@ -8,7 +8,8 @@ using Voss.Core;
 namespace Voss.EditorTools
 {
     /// <summary>
-    /// Menu: Voss > Build All Scenes. Generates the four playable graybox scenes, the materials
+    /// Menu: Voss > Build All Scenes. Generates the six scenes (menu, the vanishing, the invitation, the
+    /// theatre arrival, the laboratory, the ending), the materials
     /// they use, and registers them in Build Settings in play order. Safe to re-run: scenes are overwritten.
     /// </summary>
     public static class VossSceneBuilder
@@ -22,7 +23,10 @@ namespace Voss.EditorTools
             AssetDatabase.SaveAssets();
 
             BuildScene(SceneNames.MainMenu, MainMenuBuilder.Build);
+            BuildScene(SceneNames.Introduction, IntroductionBuilder.Build);
+            BuildScene(SceneNames.Prologue, PrologueBuilder.Build);
             BuildScene(SceneNames.Invitation, InvitationBuilder.Build);
+            BuildScene(SceneNames.Arrival, ArrivalBuilder.Build);
             BuildScene(SceneNames.Laboratory, LaboratoryBuilder.Build);
             BuildScene(SceneNames.Theatre, TheatreBuilder.Build);
 
@@ -32,6 +36,9 @@ namespace Voss.EditorTools
         }
 
         [MenuItem("Voss/Build Scene/00 Main Menu")] public static void BuildMenu() { Prep(); BuildScene(SceneNames.MainMenu, MainMenuBuilder.Build); RegisterBuildSettings(); }
+        [MenuItem("Voss/Build Scene/00a Voss Introduction")] public static void BuildIntroduction() { Prep(); BuildScene(SceneNames.Introduction, IntroductionBuilder.Build); RegisterBuildSettings(); }
+        [MenuItem("Voss/Build Scene/00b Prologue")] public static void BuildPrologue() { Prep(); BuildScene(SceneNames.Prologue, PrologueBuilder.Build); RegisterBuildSettings(); }
+        [MenuItem("Voss/Build Scene/01b Theatre Arrival")] public static void BuildArrival() { Prep(); BuildScene(SceneNames.Arrival, ArrivalBuilder.Build); RegisterBuildSettings(); }
         [MenuItem("Voss/Build Scene/01 Invitation")] public static void BuildInvitation() { Prep(); BuildScene(SceneNames.Invitation, InvitationBuilder.Build); RegisterBuildSettings(); }
         [MenuItem("Voss/Build Scene/02 Laboratory")] public static void BuildLab() { Prep(); BuildScene(SceneNames.Laboratory, LaboratoryBuilder.Build); RegisterBuildSettings(); }
         [MenuItem("Voss/Build Scene/03 Theatre")] public static void BuildTheatre() { Prep(); BuildScene(SceneNames.Theatre, TheatreBuilder.Build); RegisterBuildSettings(); }
@@ -60,7 +67,7 @@ namespace Voss.EditorTools
         public static void RegisterBuildSettings()
         {
             var list = new List<EditorBuildSettingsScene>();
-            foreach (var name in new[] { SceneNames.MainMenu, SceneNames.Invitation, SceneNames.Laboratory, SceneNames.Theatre })
+            foreach (var name in new[] { SceneNames.MainMenu, SceneNames.Introduction, SceneNames.Prologue, SceneNames.Invitation, SceneNames.Arrival, SceneNames.Laboratory, SceneNames.Theatre })
             {
                 string path = $"{VossBuildKit.ScenesFolder}/{name}.unity";
                 if (System.IO.File.Exists(path)) list.Add(new EditorBuildSettingsScene(path, true));

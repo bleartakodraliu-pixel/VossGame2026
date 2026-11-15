@@ -38,7 +38,7 @@ namespace Voss.EditorTools
             var ticket = K.Group(envelope.transform, "VossTicket", new Vector3(0f, 0.014f, -0.01f));
             K.Box(ticket.transform, "TicketCard", Vector3.zero, new Vector3(0.16f, 0.004f, 0.07f), K.Mats.Paper);
             K.Text3D(ticket.transform, "Front", "VOSS\nPRIVATE PERFORMANCE\n7314", new Vector3(0f, 0.0025f, 0f), Vector3.up, 0.012f, new Color(0.12f, 0.08f, 0.05f), TextAnchor.MiddleCenter, FontStyle.Bold, 64, Vector3.forward);
-            K.Text3D(ticket.transform, "Back", "You watched me disappear.\nNow find out how.", new Vector3(0f, -0.0025f, 0f), Vector3.down, 0.010f, new Color(0.12f, 0.08f, 0.05f), TextAnchor.MiddleCenter, FontStyle.Italic, 64, Vector3.forward);
+            K.Text3D(ticket.transform, "Back", "You watched me disappear.\nNow discover how.", new Vector3(0f, -0.0025f, 0f), Vector3.down, 0.010f, new Color(0.12f, 0.08f, 0.05f), TextAnchor.MiddleCenter, FontStyle.Italic, 64, Vector3.forward);
             var ticketRelay = ticket.AddComponent<RelayInteractable>();
 
             // An old newspaper beside the envelope: the player was there that night, and kept it.

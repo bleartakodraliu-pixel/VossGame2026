@@ -33,9 +33,12 @@ namespace Voss.UI
         private EvidencePanel evidencePanel;
         private ChoicePanel choice;
         private ChoicePanel failure;
-        private ChoicePanel mainMenu;
+        private MainMenuPanel mainMenu;
         private VideoControlsPanel videoControls;
         private StoryPanel story;
+        private LetterPanel letter;
+        private ObjectiveHud objective;
+        private VictoryPanel victory;
 
         private Coroutine attemptsRoutine;
         private Coroutine messageRoutine;
@@ -46,10 +49,13 @@ namespace Voss.UI
         public ChoicePanel Choice => choice;
         public VideoControlsPanel VideoControls => videoControls;
         public StoryPanel Story => story;
+        public LetterPanel Letter => letter;
         public bool EvidenceEnabled { get => evidenceEnabled; set => evidenceEnabled = value; }
 
         public bool IsModalOpen =>
-            keypad.IsOpen || evidencePanel.IsOpen || choice.IsOpen || failure.IsOpen || mainMenu.IsOpen || videoControls.IsOpen;
+            keypad.IsOpen || evidencePanel.IsOpen || choice.IsOpen || failure.IsOpen || mainMenu.IsOpen || videoControls.IsOpen || letter.IsOpen || victory.IsOpen;
+
+        public bool IsVictoryOpen => victory.IsOpen;
 
         public bool IsFailureOpen => failure.IsOpen;
 
@@ -107,9 +113,12 @@ namespace Voss.UI
             evidencePanel = new EvidencePanel(t);
             choice = new ChoicePanel(t, "ChoicePanel");
             failure = new ChoicePanel(t, "FailurePanel");
-            mainMenu = new ChoicePanel(t, "MainMenuPanel");
+            mainMenu = new MainMenuPanel(t);
             videoControls = new VideoControlsPanel(t);
             story = new StoryPanel(t);
+            objective = new ObjectiveHud(t);
+            letter = new LetterPanel(t);
+            victory = new VictoryPanel(t);
 
             // Fade is last so it sits on top of everything.
             fade = UIFactory.Panel(t, "Fade", Color.black).GetComponent<Image>();
@@ -152,8 +161,12 @@ namespace Voss.UI
                 else if (evidencePanel.IsOpen) evidencePanel.Close();
                 else if (videoControls.IsOpen) videoControls.HandleBack();
                 else if (choice.IsOpen) choice.HandleBack();
+                else if (mainMenu.IsOpen) mainMenu.HandleBack();
             }
-            if (VossInput.EvidencePressed() && evidenceEnabled && !failure.IsOpen && !mainMenu.IsOpen)
+            letter.Update();
+            objective.Update();
+            victory.Update();
+            if (VossInput.EvidencePressed() && evidenceEnabled && !failure.IsOpen && !mainMenu.IsOpen && !letter.IsOpen)
             {
                 if (evidencePanel.IsOpen) evidencePanel.Close();
                 else if (!keypad.IsOpen && !choice.IsOpen && !videoControls.IsOpen) evidencePanel.Open();
@@ -203,6 +216,10 @@ namespace Voss.UI
         }
 
         public void SetSubtitle(string text) { subtitle.text = text ?? string.Empty; }
+
+        /// <summary>Quiet current-objective line, top left.</summary>
+        public void ShowObjective(string text) { objective.Show(text); }
+        public void HideObjective() { objective.Hide(); }
 
         public void SetCursorFree(bool free) { cursorFree = free; }
 
@@ -277,15 +294,23 @@ namespace Voss.UI
             }, false, null, new Color(0.12f, 0f, 0f, 0.92f));
         }
 
+        /// <summary>The game is won: EXPERIMENT COMPLETED, with Play Again and Main Menu.</summary>
+        public void ShowVictory(Action playAgain, Action menu)
+        {
+            CloseGameplayModals();
+            HideMessage();
+            SetPrompt(string.Empty);
+            SetSubtitle(string.Empty);
+            objective.HideInstant();
+            attempts.gameObject.SetActive(false);
+            evidenceEnabled = false;
+            victory.Open(playAgain, menu);
+        }
+
         public void ShowMainMenu(Action newGame, Action quit)
         {
             CloseGameplayModals();
-            mainMenu.Open("THE VOSS EXPERIMENT", "You watched him disappear.",
-                new[] { "BEGIN EXPERIMENT", "QUIT" }, i =>
-                {
-                    if (i == 0) { mainMenu.Close(); newGame?.Invoke(); }
-                    else quit?.Invoke();
-                }, false, null, new Color(0f, 0f, 0f, 0.55f));
+            mainMenu.Open(newGame, quit);
         }
 
         public void HideMainMenu() { mainMenu.Close(); }
@@ -308,9 +333,12 @@ namespace Voss.UI
             attemptsRoutine = null;
             messageRoutine = null;
             story.Close();
+            letter.Close();
+            objective.HideInstant();
             CloseGameplayModals();
             failure.Close();
             mainMenu.Close();
+            victory.Close();
             SetPrompt(string.Empty);
             SetSubtitle(string.Empty);
             HideMessage();

@@ -11,6 +11,16 @@ namespace Voss.Narrative
         private readonly List<EvidenceItem> items = new List<EvidenceItem>();
 
         public event Action<EvidenceItem> EvidenceDiscovered;
+
+        /// <summary>The letter found in the black envelope at the start of the game.</summary>
+        public const string LetterText =
+            "Twenty years ago, I performed my final illusion.\n\n" +
+            "Four hundred people watched me disappear.\n\n" +
+            "The world believed I was gone forever.\n\n" +
+            "But you were there.\n\n" +
+            "You watched me disappear.\n\n" +
+            "Now discover how.\n\n" +
+            "- E. Voss";
         public IReadOnlyList<EvidenceItem> Items => items;
 
         private void Awake()
@@ -23,7 +33,10 @@ namespace Voss.Narrative
             items.Clear();
             items.Add(new EvidenceItem(EvidenceIds.Ticket, "Voss Ticket",
                 "VOSS\nPRIVATE PERFORMANCE\n7314",
-                "You watched me disappear.\nNow find out how."));
+                "You watched me disappear.\nNow discover how."));
+            items.Add(new EvidenceItem(EvidenceIds.Letter, "Letter from E. Voss",
+                LetterText,
+                "Ticket 7314 was folded inside."));
             items.Add(new EvidenceItem(EvidenceIds.Read, "Card: READ",
                 "READ",
                 "Found behind the impossible mirror."));

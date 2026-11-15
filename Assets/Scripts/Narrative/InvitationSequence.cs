@@ -9,9 +9,8 @@ using Voss.UI;
 namespace Voss.Narrative
 {
     /// <summary>
-    /// Scene 01. A prologue over black tells who Voss was and what happened at his last show. Then an
-    /// envelope on a dark table: the player opens it, examines the ticket (7314 on the front, Voss's
-    /// message on the back) and follows the address to the laboratory. The number is shown, never explained.
+    /// Scene 01, after the vanishing: an envelope on a dark table. The player opens it, examines the
+    /// ticket (7314 on the front, Voss's message on the back) and follows the address to the old theatre.
     /// </summary>
     public class InvitationSequence : MonoBehaviour
     {
@@ -27,26 +26,9 @@ namespace Voss.Narrative
         private bool examined;
         private Vector3 ticketStart;
 
-        /// <summary>Once per session: a restart after failing goes straight to the table.</summary>
-        private static bool prologueSeen;
-
-        public static readonly string[] Prologue =
+        public static readonly string[] ToTheatre =
         {
-            "Twenty years ago, the illusionist E. Voss gave his last performance.",
-            "It was called THE IMPOSSIBLE EXIT.",
-            "In front of four hundred people, he stepped into a sealed glass chamber.",
-            "The lights went out for seven seconds.",
-            "When they came back on, the chamber was empty.",
-            "The police searched the stage for weeks. They found nothing.",
-            "Since then, a few people from that audience have received a black envelope.",
-            "None of them ever explained what they found.",
-            "Tonight, one arrived for you."
-        };
-
-        public static readonly string[] ToLaboratory =
-        {
-            "The address on the envelope led to the old theatre.",
-            "Beneath the stage, an elevator was waiting."
+            "The address on the envelope led to the old Voss Theatre."
         };
 
         public void Configure(Transform lid, Transform ticketTransform, RelayInteractable envelope, RelayInteractable ticketRelay, PlayerInteractor interactor)
@@ -79,35 +61,6 @@ namespace Voss.Narrative
                 ticketInteract.OnInteract.AddListener(ExamineTicket);
             }
             if (player != null && player.Controller != null) player.Controller.MovementEnabled = false;
-
-            if (!prologueSeen && ui != null) StartCoroutine(PrologueRoutine());
-        }
-
-        private IEnumerator PrologueRoutine()
-        {
-            var gm = GameManager.Instance;
-            var ui = UIManager.Instance;
-            if (envelopeInteract != null) envelopeInteract.Interactable = false;
-            ui.Story.Open(StoryCards.SkipHint);
-            while (gm != null && gm.Transitions.IsTransitioning) yield return null; // let the scene fade-in finish
-            yield return new WaitForSeconds(0.8f);
-
-            yield return StoryCards.Play(Prologue, true, i =>
-            {
-                if (gm == null) return;
-                if (i == 0) gm.Audio.Play(SfxId.Projector, 0.6f);
-                else if (i == 2) gm.Audio.Play(SfxId.Applause, 0.35f);
-                else if (i == 3) gm.Audio.Play(SfxId.PowerDown, 0.7f);
-                else if (i == 8) gm.Audio.Play(SfxId.Knock, 0.9f);
-            });
-            prologueSeen = true;
-
-            // Hide the switch to the table behind the fade.
-            yield return ui.FadeTo(1f, 0.6f);
-            ui.Story.Close();
-            yield return new WaitForSeconds(0.4f);
-            yield return ui.FadeTo(0f, 1.6f);
-            if (envelopeInteract != null) envelopeInteract.Interactable = true;
         }
 
         private void OpenEnvelope()
@@ -185,11 +138,11 @@ namespace Voss.Narrative
                 yield return ui.FadeTo(1f, 1.0f);
                 ui.Story.Open(null);
                 yield return ui.FadeTo(0f, 0.3f);
-                yield return StoryCards.Play(ToLaboratory, false, i => { if (i == 1) gm?.Audio.Play(SfxId.Elevator, 0.8f); });
+                yield return StoryCards.Play(ToTheatre, false);
                 yield return ui.FadeTo(1f, 0.4f);
                 ui.Story.Close();
             }
-            gm?.Transitions.LoadScene(SceneNames.Laboratory, 1.0f);
+            gm?.Transitions.LoadScene(SceneNames.Arrival, 1.0f);
         }
     }
 }

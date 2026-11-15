@@ -9,7 +9,7 @@ namespace Voss.EditorTools
 {
     /// <summary>
     /// Architectural dressing that makes 02_VossLaboratory read as an underground research facility:
-    /// fluorescent fittings that die with their lights, caged corridor bulbs, pipework, vents, signage,
+    /// fluorescent fittings that die with their lights, caged bulbs, pipework, vents, signage,
     /// hazard thresholds, grime, a dark observation room behind glass, a wet bench and a specimen shelf.
     /// </summary>
     public static class LaboratoryDressing
@@ -65,28 +65,26 @@ namespace Voss.EditorTools
             // Interrogation lamp over the REASON scale.
             InterrogationLamp(rooms[1], rooms[1].Find("ScaleLight")?.GetComponent<Light>(), new Vector3(0f, 3.4f, 17f), roomCeiling);
 
-            foreach (var group in new[] { "Lights_ToReason", "Lights_ToMemory", "Lights_WayBack" })
+            // The room behind the hidden wall: bare caged bulbs, dark until it opens.
+            var final = root.Find("FinalExperiment");
+            foreach (var name in new[] { "FinalLight_A", "FinalLight_B" })
             {
-                var g = root.Find(group);
-                if (g == null) continue;
-                foreach (Transform lamp in g)
-                {
-                    var l = lamp.GetComponent<Light>();
-                    if (l != null) CagedBulb(d, l, new Vector3(lamp.position.x, corridorCeiling, lamp.position.z));
-                }
+                var l = final != null ? final.Find(name) : null;
+                if (l != null) CagedBulb(final, l.GetComponent<Light>(), new Vector3(l.localPosition.x, hallCeiling, l.localPosition.z));
             }
 
             // ------------------------------------------------------- pipework
             Pipe(d, new Vector3(-16f, 4.55f, 6.4f), new Vector3(16f, 4.55f, 6.4f), 0.07f, K.Mats.Rust, Vector3.forward);
             Pipe(d, new Vector3(-16f, 4.75f, 6.42f), new Vector3(16f, 4.75f, 6.42f), 0.045f, K.Mats.Steel, Vector3.forward);
             Pipe(d, new Vector3(-16f, 4.6f, -6.4f), new Vector3(16f, 4.6f, -6.4f), 0.06f, K.Mats.Rust, Vector3.back);
-            Pipe(d, new Vector3(-10.5f, 0f, 6.42f), new Vector3(-10.5f, 4.55f, 6.42f), 0.05f, K.Mats.Rust, Vector3.forward);
-            Valve(d, new Vector3(-10.5f, 1.45f, 6.3f));
-            Gauge(d, new Vector3(-10.5f, 1.95f, 6.36f));
-            Pipe(d, new Vector3(-4f, 2.95f, 26.72f), new Vector3(0.8f, 2.95f, 26.72f), 0.06f, K.Mats.Rust, Vector3.forward);
-            Pipe(d, new Vector3(6.8f, 2.95f, 49.12f), new Vector3(13.2f, 2.95f, 49.12f), 0.06f, K.Mats.Rust, Vector3.forward);
-            Pipe(d, new Vector3(12.92f, 2.95f, 7f), new Vector3(12.92f, 2.95f, 31f), 0.06f, K.Mats.Rust, Vector3.right);
-            Pipe(d, new Vector3(12.95f, 2.75f, 7f), new Vector3(12.95f, 2.75f, 31f), 0.035f, K.Mats.Steel, Vector3.right);
+            Pipe(d, new Vector3(-7.5f, 0f, 6.42f), new Vector3(-7.5f, 4.55f, 6.42f), 0.05f, K.Mats.Rust, Vector3.forward);
+            Valve(d, new Vector3(-7.5f, 1.45f, 6.3f));
+            Gauge(d, new Vector3(-7.5f, 1.95f, 6.36f));
+            if (final != null)
+            {
+                Pipe(final, new Vector3(-30f, 4.55f, 1.55f), new Vector3(-16f, 4.55f, 1.55f), 0.06f, K.Mats.Rust, Vector3.back);
+                Pipe(final, new Vector3(-30f, 4.75f, 1.57f), new Vector3(-16f, 4.75f, 1.57f), 0.035f, K.Mats.Steel, Vector3.back);
+            }
 
             // --------------------------------------------------------- vents
             Vent(d, new Vector3(-13f, 4.1f, -6.83f), Vector3.forward);
@@ -95,33 +93,24 @@ namespace Voss.EditorTools
 
             // -------------------------------------------------------- signage
             Sign(hall, "Sign_Silence", new Vector3(6.8f, 1.7f, -6.83f), Vector3.forward, "SUBJECTS MUST\nREMAIN SILENT", new Vector2(0.9f, 0.45f), K.Mats.WhitePanel, Red);
-            Sign(hall, "Sign_Chamber01", new Vector3(-8f, 4.18f, 6.83f), Vector3.back, "TEST CHAMBER 01", new Vector2(1.4f, 0.22f), K.Mats.WhitePanel, SignInk);
-            Sign(hall, "Sign_Authorized", new Vector3(12f, 4.0f, 6.83f), Vector3.back, "AUTHORIZED PERSONNEL ONLY", new Vector2(1.7f, 0.25f), K.Mats.Hazard, SignInk);
+            for (int i = 0; i < 3; i++)
+                Sign(hall, "Sign_Chamber0" + (i + 1), new Vector3(rooms[i].position.x, 4.18f, 6.83f), Vector3.back, "TEST CHAMBER 0" + (i + 1), new Vector2(1.4f, 0.22f), K.Mats.WhitePanel, SignInk);
             Sign(hall, "Sign_Level", new Vector3(0f, 3.35f, -6.83f), Vector3.forward, "B3", new Vector2(0.45f, 0.24f), K.Mats.Silhouette, new Color(1f, 0.15f, 0.1f));
             Sign(rooms[0], "Sign_Chamber", new Vector3(0f, 3.65f, 11.17f), Vector3.forward, "CHAMBER 01 - PERCEPTION", new Vector2(2.2f, 0.25f), K.Mats.Gold, SignInk);
             Sign(rooms[1], "Sign_Chamber", new Vector3(0f, 3.65f, 11.17f), Vector3.forward, "CHAMBER 02 - REASON", new Vector2(2.0f, 0.25f), K.Mats.WhitePanel, SignInk);
             Sign(rooms[1], "Sign_Recorded", new Vector3(4.03f, 2.4f, 19f), Vector3.left, "ALL ANSWERS\nARE RECORDED", new Vector2(0.9f, 0.4f), K.Mats.WhitePanel, Red);
             Sign(rooms[2], "Sign_Chamber", new Vector3(0f, 3.65f, 11.17f), Vector3.forward, "CHAMBER 03 - MEMORY", new Vector2(2.0f, 0.25f), K.Mats.WhitePanel, SignInk);
             K.Text3D(rooms[2], "Scrawl", "YOU HAVE BEEN\nHERE BEFORE", new Vector3(-4.02f, 2.45f, 17.6f), Vector3.right, 0.13f, new Color(0.42f, 0.04f, 0.03f), TextAnchor.MiddleCenter, FontStyle.Italic);
-            Sign(d, "Sign_ToChamber02", new Vector3(-5.2f, 2.2f, 26.83f), Vector3.back, "CHAMBER 02  >", new Vector2(1.1f, 0.25f), K.Mats.WhitePanel, SignInk);
 
             // ------------------------------------------------ hazard thresholds
-            Threshold(hall, new Vector3(-8f, 0f, 6.45f), new Vector2(2.2f, 0.5f));
-            Threshold(hall, new Vector3(12f, 0f, 6.45f), new Vector2(2.2f, 0.5f));
+            for (int i = 0; i < 3; i++) Threshold(hall, new Vector3(rooms[i].position.x, 0f, 6.45f), new Vector2(2.2f, 0.5f));
             Threshold(hall, new Vector3(0f, 0f, -6.45f), new Vector2(3.2f, 0.5f));
-            Threshold(hall, new Vector3(-15.55f, 0f, -3f), new Vector2(0.5f, 2.2f));
-            Threshold(d, new Vector3(2f, 0f, 26.6f), new Vector2(2.2f, 0.5f));
-            Threshold(d, new Vector3(12f, 0f, 47.4f), new Vector2(2.2f, 0.5f));
-            Threshold(rooms[1], new Vector3(2.8f, 0f, 22.55f), new Vector2(2.2f, 0.5f));
-            Threshold(rooms[2], new Vector3(0f, 0f, 22.55f), new Vector2(2.2f, 0.5f));
 
             // ---------------------------------------------------------- grime
             var rnd = new System.Random(731);
             Stains(hall, rnd, 16, new Vector2(-15f, 15f), new Vector2(-6f, 6f));
             for (int i = 1; i < 3; i++) Stains(rooms[i], rnd, 4, new Vector2(-3.8f, 3.8f), new Vector2(11.5f, 22.5f));
-            Stains(d, rnd, 3, new Vector2(-3.8f, 3f), new Vector2(24.8f, 26.8f));
-            Stains(d, rnd, 3, new Vector2(6.2f, 13f), new Vector2(47.2f, 49.2f));
-            Stains(d, rnd, 6, new Vector2(11f, 13f), new Vector2(7.5f, 30.5f));
+            if (final != null) Stains(final, rnd, 6, new Vector2(-29.5f, -16.5f), new Vector2(-6.5f, 1.5f));
             Drain(hall, new Vector3(-3f, 0f, 1.5f));
             Drain(rooms[1], new Vector3(-1.5f, 0f, 21.5f));
 
@@ -384,7 +373,7 @@ namespace Voss.EditorTools
         /// <summary>Steel shelving on the north wall with specimen jars. One of them is looking back.</summary>
         private static void BuildSpecimenShelf(Transform hall)
         {
-            var s = K.Group(hall, "SpecimenShelf", new Vector3(8f, 0f, 6.45f)).transform;
+            var s = K.Group(hall, "SpecimenShelf", new Vector3(7.6f, 0f, 6.45f)).transform;
             foreach (float x in new[] { -1.65f, 1.65f })
                 foreach (float z in new[] { -0.18f, 0.18f })
                     K.Box(s, "Post", new Vector3(x, 1.0f, z), new Vector3(0.04f, 2.0f, 0.04f), K.Mats.Steel, false);

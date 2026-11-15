@@ -30,12 +30,12 @@ namespace Voss.Narrative
 
         public static readonly string[] MonitorText =
         {
-            "VOSS EXPERIMENT ACTIVATED",
-            "SUBJECT DETECTED",
-            "THREE TESTS:",
-            "PERCEPTION  REASON  MEMORY",
+            "SUBJECT 7314",
+            "EXPERIMENT INITIATED",
+            "",
+            "THREE TESTS",
             "FIVE MISTAKES ALLOWED",
-            "TRUST NOTHING"
+            "FIND A WAY OUT"
         };
 
         public void Configure(Transform left, Transform right, PlayerTriggerZone zone, List<Light> hall, List<Light> emergency, TerminalController terminal)
@@ -139,7 +139,7 @@ namespace Voss.Narrative
             gm?.Audio.PlayMusic(MusicId.Drone, 4f);
             if (gm != null)
             {
-                gm.VossSays("Welcome back. You have seen my work before. From your seat.", 4f);
+                UIManager.Instance?.ShowMessage("FIND A WAY OUT", "OBJECTIVE", 4f, 0f, UIFactory.Brass);
                 yield return new WaitForSeconds(4.4f);
                 gm.VossSays("Every wrong answer is recorded. Five, and we begin again.", 4f);
                 yield return new WaitForSeconds(4.4f);

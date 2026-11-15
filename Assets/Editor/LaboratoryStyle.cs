@@ -26,7 +26,8 @@ namespace Voss.EditorTools
             Perception(rooms[0]);
             Reason(rooms[1]);
             Memory(rooms[2]);
-            Corridors(style);
+            Corridors(rooms);
+            FinalRoom(root.Find("FinalExperiment"));
         }
 
         // ================================================================= hall
@@ -42,7 +43,7 @@ namespace Voss.EditorTools
             // Red cage lamps along both long walls.
             RedCageLamp(h, new Vector3(-13.6f, 2.7f, 6.8f), Vector3.back, 1.4f, false);
             RedCageLamp(h, new Vector3(3f, 2.7f, 6.8f), Vector3.back, 1.4f, true);
-            RedCageLamp(h, new Vector3(10.3f, 2.7f, 6.8f), Vector3.back, 1.4f, false);
+            RedCageLamp(h, new Vector3(7.5f, 2.7f, 6.8f), Vector3.back, 1.4f, false);
             RedCageLamp(h, new Vector3(-13f, 2.7f, -6.8f), Vector3.forward, 1.4f, true);
             RedCageLamp(h, new Vector3(6.8f, 2.8f, -6.8f), Vector3.forward, 1.4f, false);
             RedCageLamp(h, new Vector3(12.5f, 2.7f, -6.8f), Vector3.forward, 1.4f, false);
@@ -50,7 +51,7 @@ namespace Voss.EditorTools
             SpecimenTank(h, new Vector3(-14.6f, 0f, 0.8f));
             StageCorner(h);
             Shelving(h, new Vector3(-3.2f, 0f, 6.48f));
-            Envelopes(h);
+            Envelopes(hall.Find("Props/SubjectDesk") ?? h);
 
             FlightCase(h, new Vector3(14.8f, 0f, 4.9f), new Vector3(0.8f, 0.6f, 0.55f), 8f);
             FlightCase(h, new Vector3(14.75f, 0.6f, 4.85f), new Vector3(0.7f, 0.45f, 0.5f), -6f);
@@ -198,10 +199,10 @@ namespace Voss.EditorTools
             }
         }
 
-        /// <summary>Black envelopes with red wax seals among the subject files.</summary>
+        /// <summary>Black envelopes with red wax seals among the subject files (positions in the desk's frame).</summary>
         private static void Envelopes(Transform parent)
         {
-            var spots = new[] { (new Vector3(-13.0f, 0.785f, 6.15f), 22f), (new Vector3(-12.85f, 0.796f, 6.45f), -12f), (new Vector3(-11.85f, 0.797f, 6.05f), 35f) };
+            var spots = new[] { (new Vector3(-0.8f, 0.785f, -0.15f), 22f), (new Vector3(-0.65f, 0.796f, 0.15f), -12f), (new Vector3(0.35f, 0.797f, -0.25f), 35f) };
             foreach (var (p, yaw) in spots)
             {
                 var e = K.Group(parent, "BlackEnvelope", p).transform;
@@ -244,10 +245,9 @@ namespace Voss.EditorTools
             foreach (float x in new[] { -1.5f, 1.5f, -3.8f, 3.8f })
                 K.Box(s, "Pilaster", new Vector3(x, (top + 0.12f) * 0.5f, 11.17f), new Vector3(0.06f, top - 0.12f, 0.035f), K.Mats.Gold, false);
 
-            // Gold frames for the illusions and the eye chart, an EXIT sign over the far door.
+            // Gold frames for the illusions and the eye chart.
             foreach (float x in new[] { -2.7f, 2.7f }) Frame(s, new Vector3(x, 2.1f, 11.19f), new Vector2(1.6f, 1.1f), Vector3.forward);
             Frame(s, new Vector3(-4.02f, 2.0f, 17f), new Vector2(0.75f, 1.1f), Vector3.right);
-            ExitSign(s, new Vector3(2.8f, 3.72f, 22.78f), Vector3.back);
 
             // Velvet drapes framing the room.
             Drape(s, new Vector3(-3.99f, 2.2f, 11.85f), new Vector3(0.12f, 4.4f, 1.2f));
@@ -287,14 +287,6 @@ namespace Voss.EditorTools
             K.Box(f, "B", new Vector3(0f, -size.y * 0.5f - b * 0.5f, 0f), new Vector3(size.x + b * 2f, b, 0.03f), K.Mats.Gold, false);
             K.Box(f, "L", new Vector3(-size.x * 0.5f - b * 0.5f, 0f, 0f), new Vector3(b, size.y, 0.03f), K.Mats.Gold, false);
             K.Box(f, "R", new Vector3(size.x * 0.5f + b * 0.5f, 0f, 0f), new Vector3(b, size.y, 0.03f), K.Mats.Gold, false);
-        }
-
-        private static void ExitSign(Transform parent, Vector3 at, Vector3 facing)
-        {
-            var e = K.Group(parent, "ExitSign", at).transform;
-            e.localRotation = Quaternion.LookRotation(facing, Vector3.up);
-            K.Box(e, "Box", Vector3.zero, new Vector3(0.6f, 0.22f, 0.06f), K.Mats.SignRed, false);
-            K.Text3D(e, "Text", "EXIT", new Vector3(0f, 0f, 0.035f), Vector3.forward, 0.13f, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
         }
 
         private static void Trunk(Transform parent, Vector3 at)
@@ -403,11 +395,6 @@ namespace Voss.EditorTools
             var scroll = K.Prim(s, "Scroll", PrimitiveType.Cylinder, new Vector3(2.65f, 0.83f, 19.32f), new Vector3(0.05f, 0.16f, 0.05f), K.Mats.OldPaper, false);
             scroll.transform.localRotation = Quaternion.Euler(0f, 30f, 90f);
 
-            // The far door: warning stripes and a caged red lamp.
-            var exitPanel = r.Find("Exit_REASON/Panel");
-            if (exitPanel != null) K.SurfaceBox(exitPanel, "HazardPlate", new Vector3(0f, 0.2f, 0f), new Vector3(1.9f, 0.36f, 0.275f), K.Mats.Hazard, false);
-            RedCageLamp(s, new Vector3(2.8f, 3.5f, 22.7f), Vector3.back, 0f, false);
-
             Cobweb(s, new Vector3(-3.6f, 4.05f, 22.82f), Vector3.back, 0.9f, false);
             Cobweb(s, new Vector3(3.6f, 4.05f, 11.18f), Vector3.forward, 0.8f, false);
         }
@@ -504,29 +491,24 @@ namespace Voss.EditorTools
 
         // ============================================================ corridors
 
-        private static void Corridors(Transform s)
+        private static void Corridors(Transform[] rooms)
         {
-            var c = K.Group(s, "Corridors").transform;
-            foreach (float z in new[] { 8.5f, 14.8f, 22.5f, 29.5f }) Portal(c, false, z, 10.8f, 13.2f);
-            Portal(c, true, -0.2f, 24.6f, 27f);
-            Portal(c, true, 8f, 47f, 49.4f);
-            Portal(c, false, 45.5f, 3.6f, 6f);
+            // A concrete portal halfway down each chamber's entrance corridor.
+            foreach (var r in rooms) Portal(K.Group(r, "CorridorStyle").transform, false, 8.2f, -1.2f, 1.2f);
+        }
 
-            RedCageLamp(c, new Vector3(-3f, 2.4f, 24.77f), Vector3.forward, 1f, false);
-            RedCageLamp(c, new Vector3(10.97f, 2.4f, 7.9f), Vector3.right, 1f, true);
-            RedCageLamp(c, new Vector3(13.03f, 2.4f, 26.5f), Vector3.left, 1f, false);
-
-            EdgeStripe(c, new Vector3(11.1f, 0f, 7.5f), new Vector3(11.1f, 0f, 30.5f));
-            EdgeStripe(c, new Vector3(12.9f, 0f, 7.5f), new Vector3(12.9f, 0f, 30.5f));
-            EdgeStripe(c, new Vector3(-3.8f, 0f, 24.9f), new Vector3(0.8f, 0f, 24.9f));
-
-            Puddle(c, new Vector3(12f, 0f, 20f), new Vector2(1.2f, 0.8f), 10f);
-            Puddle(c, new Vector3(11.8f, 0f, 12f), new Vector2(0.9f, 0.6f), 60f);
-            Puddle(c, new Vector3(-2f, 0f, 25.6f), new Vector2(1f, 0.7f), 0f);
-            Puddle(c, new Vector3(9.5f, 0f, 47.8f), new Vector2(1.1f, 0.6f), 90f);
-
-            Cobweb(c, new Vector3(12.65f, 2.8f, 7.17f), Vector3.forward, 0.8f, false);
-            Cobweb(c, new Vector3(5.6f, 2.8f, 49.23f), Vector3.back, 0.8f, true);
+        /// <summary>The theatre behind the hidden wall: red cage lamps, puddles, cobwebs.</summary>
+        private static void FinalRoom(Transform f)
+        {
+            if (f == null) return;
+            var c = K.Group(f, "Underground").transform;
+            RedCageLamp(c, new Vector3(-18.5f, 3f, 1.83f), Vector3.back, 0f, false);
+            RedCageLamp(c, new Vector3(-27.5f, 3f, -6.83f), Vector3.forward, 0f, false);
+            Puddle(c, new Vector3(-25.5f, 0f, -5.0f), new Vector2(1.2f, 0.8f), 15f);
+            Puddle(c, new Vector3(-26.8f, 0f, 0.2f), new Vector2(1f, 0.7f), 70f);
+            Puddle(c, new Vector3(-18.4f, 0f, -3.3f), new Vector2(0.9f, 0.6f), 0f);
+            Cobweb(c, new Vector3(-29.4f, 4.55f, 1.83f), Vector3.back, 1f, false);
+            Cobweb(c, new Vector3(-16.6f, 4.55f, -6.83f), Vector3.forward, 1f, true);
         }
 
         /// <summary>Concrete portal frame across a corridor (pillars against both walls and a lintel).</summary>

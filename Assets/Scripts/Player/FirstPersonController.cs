@@ -45,6 +45,21 @@ namespace Voss.Player
         /// <summary>Hard lock used by cinematics. Independent of UI modal state.</summary>
         public void SetControlLocked(bool locked) { controlLocked = locked; }
 
+        /// <summary>Cinematic: eases the view toward a world point. Call every frame while control is locked.</summary>
+        public void LookTowards(Vector3 point, float sharpness = 3f)
+        {
+            if (cameraPivot == null) return;
+            Vector3 to = point - cameraPivot.position;
+            if (to.sqrMagnitude < 0.0001f) return;
+            float targetYaw = Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg;
+            float targetPitch = Mathf.Clamp(-Mathf.Atan2(to.y, new Vector2(to.x, to.z).magnitude) * Mathf.Rad2Deg, -maxPitch, maxPitch);
+            float k = 1f - Mathf.Exp(-sharpness * Time.deltaTime);
+            yaw = Mathf.LerpAngle(yaw, targetYaw, k);
+            pitch = Mathf.Lerp(pitch, targetPitch, k);
+            transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            cameraPivot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+        }
+
         public void Teleport(Vector3 position, float yawDegrees)
         {
             controller.enabled = false;
@@ -61,7 +76,7 @@ namespace Voss.Player
 
             if (!blocked && lookEnabled)
             {
-                Vector2 look = VossInput.LookDelta() * lookSensitivity;
+                Vector2 look = VossInput.LookDelta() * lookSensitivity * GameSettings.MouseSensitivity;
                 yaw += look.x;
                 pitch = Mathf.Clamp(pitch - look.y, -maxPitch, maxPitch);
                 transform.rotation = Quaternion.Euler(0f, yaw, 0f);

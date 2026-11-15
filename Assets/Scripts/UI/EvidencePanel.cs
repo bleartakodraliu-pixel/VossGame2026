@@ -48,6 +48,9 @@ namespace Voss.UI
             UIFactory.Place(cardTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(440f, 24f));
 
             cardText = UIFactory.Label(cardBg, "ClueText", "", 30, new Color(0.08f, 0.07f, 0.06f, 1f), TextAnchor.MiddleCenter, FontStyle.Bold);
+            cardText.resizeTextForBestFit = true; // long items (the letter) shrink to fit the card
+            cardText.resizeTextMinSize = 11;
+            cardText.resizeTextMaxSize = 30;
             UIFactory.Place(cardText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -8f), new Vector2(440f, 220f));
 
             var flip = UIFactory.Button(card, "Flip", "TURN OVER", 15, Flip);

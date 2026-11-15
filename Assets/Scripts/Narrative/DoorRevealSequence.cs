@@ -8,10 +8,10 @@ using Voss.Interaction;
 namespace Voss.Narrative
 {
     /// <summary>
-    /// Opens the way to the next room once its test is solved. Waits for a progression flag and,
-    /// optionally, for the reward card to be taken, then plays a short reveal: an optional blackout,
-    /// the door lamp turns pale, the door rises and the corridor beyond lights up lamp by lamp.
-    /// A fallback timer guarantees the door opens even if the card is never picked up.
+    /// Opens (or just unlocks) the way to the next room once its test is solved. Waits for a progression
+    /// flag, optionally for the reward card to be taken and for the player to pass a gate zone (back in
+    /// the hall), then plays a short reveal: an optional blackout, the door unlocks or rises, the corridor
+    /// beyond lights up lamp by lamp, Voss comments. A fallback timer covers a card that is never taken.
     /// </summary>
     public class DoorRevealSequence : MonoBehaviour
     {
@@ -27,8 +27,11 @@ namespace Voss.Narrative
         [SerializeField] private List<Light> blackoutLights = new List<Light>();
         [SerializeField] private Light doorLamp;
         [SerializeField] private string vossLine;
+        [SerializeField] private bool openOnReveal = true;
+        [SerializeField] private PlayerTriggerZone gateZone;
 
         private bool done;
+        private bool gatePassed;
         private float flagTime = -1f;
 
         public void Configure(DoorController target, GameFlag flag, string evidence, List<Light> reveal, List<Light> blackout, Light lamp, string line)
@@ -42,8 +45,23 @@ namespace Voss.Narrative
             vossLine = line;
         }
 
+        /// <summary>Seconds between the flag (and card) and the door moving. 0 = at once.</summary>
+        public void SetDelay(float seconds) { delay = Mathf.Max(0f, seconds); }
+
+        /// <summary>Hub variant: only unlock, and wait until the player walks through <paramref name="gate"/>.</summary>
+        public void ConfigureGate(PlayerTriggerZone gate, bool openDoor)
+        {
+            gateZone = gate;
+            openOnReveal = openDoor;
+        }
+
         private void Start()
         {
+            if (gateZone != null)
+            {
+                gateZone.Once = false;
+                gateZone.OnPlayerEnter.AddListener(() => gatePassed = true);
+            }
             foreach (var l in revealLights) if (l != null) l.enabled = false;
             if (doorLamp != null) doorLamp.color = LockedLamp;
 
@@ -54,7 +72,7 @@ namespace Voss.Narrative
                 done = true;
                 if (doorLamp != null) doorLamp.color = OpenLamp;
                 foreach (var l in revealLights) if (l != null) l.enabled = true;
-                if (door != null) { door.UnlockManually(); door.Open(); }
+                if (door != null) { door.UnlockManually(); if (openOnReveal) door.Open(); }
             }
         }
 
@@ -65,8 +83,9 @@ namespace Voss.Narrative
             if (done) return;
             var gm = GameManager.Instance;
             if (gm == null || !GameFlags.Check(gm.State, requiredFlag)) return;
-            if (flagTime < 0f) flagTime = Time.time;
+            if (flagTime < 0f) { flagTime = Time.time; gatePassed = false; }
             if (!HasEvidence(gm) && Time.time - flagTime < fallbackSeconds) return;
+            if (gateZone != null && !gatePassed) return;
             done = true;
             StartCoroutine(Reveal());
         }
@@ -98,7 +117,8 @@ namespace Voss.Narrative
                 if (doorLamp != null) doorLamp.color = OpenLamp;
                 yield return new WaitForSeconds(0.4f);
                 door.UnlockManually();
-                door.Open();
+                if (openOnReveal) door.Open();
+                else gm?.Audio.PlayAt(SfxId.DoorLock, door.transform.position + Vector3.up * 1.5f, 1f);
             }
             yield return new WaitForSeconds(0.7f);
 

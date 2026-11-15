@@ -26,59 +26,8 @@ namespace Voss.EditorTools
             K.Group(root, "Soundscape").AddComponent<AmbientSoundscape>().Configure(
                 new[] { SfxId.Creak, SfxId.Creak, SfxId.DistantSteps }, new Vector2(12f, 25f), new Vector2(5f, 10f), 1f, true, 0.25f);
 
-            // Shell
-            K.FloorAndCeiling(root, "House", new Vector2(-14f, -22f), new Vector2(14f, 12f), H, K.Mats.Wood, K.Mats.Ceiling);
-            K.Wall(root, "Wall_South", true, -22f, -14f, 14f, H, K.Mats.Wall);
-            K.Wall(root, "Wall_North", true, 12f, -14f, 14f, H, K.Mats.Velvet);
-            K.Wall(root, "Wall_West", false, -14f, -22f, 12f, H, K.Mats.Wall);
-            K.Wall(root, "Wall_East", false, 14f, -22f, 12f, H, K.Mats.Wall, -19f, 2f, 3f);
-            K.Box(root, "LabDoorBehind", new Vector3(0f, 1.5f, -21.8f), new Vector3(2f, 3f, 0.3f), K.Mats.BlackMetal);
-            K.Text3D(root, "LabDoorLabel", "VOSS LABORATORY", new Vector3(0f, 3.4f, -21.6f), Vector3.forward, 0.25f, new Color(0.78f, 0.62f, 0.32f), TextAnchor.MiddleCenter, FontStyle.Bold);
-
-            // Stage
-            K.Box(root, "Stage", new Vector3(0f, 0.5f, 6.5f), new Vector3(20f, 1f, 9f), K.Mats.Wood);
-            for (int i = 0; i < 3; i++)
-                K.Box(root, "StageStep", new Vector3(0f, 0.125f + i * 0.25f, 1.6f - i * 0.4f), new Vector3(4f, 0.25f + i * 0.5f, 0.4f), K.Mats.Wood);
-            K.Box(root, "Curtain_L", new Vector3(-9.6f, 5.5f, 10f), new Vector3(1.6f, 9f, 0.7f), K.Mats.Velvet);
-            K.Box(root, "Curtain_R", new Vector3(9.6f, 5.5f, 10f), new Vector3(1.6f, 9f, 0.7f), K.Mats.Velvet);
-            K.Box(root, "Curtain_Top", new Vector3(0f, 9f, 2.2f), new Vector3(22f, 2f, 0.5f), K.Mats.Velvet);
-            K.Box(root, "ProsceniumTrim", new Vector3(0f, 7.95f, 2.2f), new Vector3(22f, 0.1f, 0.55f), K.Mats.Brass, false);
-
-            // The original chamber
-            var chamber = K.Group(root, "GlassChamber", new Vector3(0f, 1f, 6f));
-            K.Box(chamber.transform, "Glass", new Vector3(0f, 1.2f, 0f), new Vector3(1.6f, 2.4f, 1.6f), K.Mats.Glass, false);
-            K.Box(chamber.transform, "Top", new Vector3(0f, 2.42f, 0f), new Vector3(1.7f, 0.06f, 1.7f), K.Mats.Brass);
-            K.Box(chamber.transform, "Base", new Vector3(0f, 0.03f, 0f), new Vector3(1.8f, 0.06f, 1.8f), K.Mats.Brass);
-            for (int c = 0; c < 4; c++)
-            {
-                float sx = (c % 2 == 0) ? -0.8f : 0.8f;
-                float sz = (c < 2) ? -0.8f : 0.8f;
-                K.Box(chamber.transform, "Post", new Vector3(sx, 1.2f, sz), new Vector3(0.06f, 2.4f, 0.06f), K.Mats.Brass);
-            }
-            var plaque = K.Group(root, "ChamberPlaque", new Vector3(0f, 1.3f, 4.9f));
-            K.Box(plaque.transform, "Plate", Vector3.zero, new Vector3(0.9f, 0.3f, 0.03f), K.Mats.Brass);
-            K.Text3D(plaque.transform, "Text", "THE IMPOSSIBLE EXIT", new Vector3(0f, 0f, -0.02f), Vector3.back, 0.08f, Color.black, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
-            var pi = plaque.AddComponent<InspectableObject>(); pi.Prompt = "Read plaque"; pi.Note = "The glass has never been opened. It was never closed on anyone.";
-
-            // Silhouette inside the glass (shown briefly)
-            var sil = K.Group(chamber.transform, "VossSilhouette", new Vector3(0f, 0.06f, 0f));
-            K.Prim(sil.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 0.9f, 0f), new Vector3(0.45f, 0.9f, 0.45f), K.Mats.Silhouette, false);
-            K.Prim(sil.transform, "Hat", PrimitiveType.Cylinder, new Vector3(0f, 1.9f, 0f), new Vector3(0.36f, 0.12f, 0.36f), K.Mats.Silhouette, false);
-            K.Prim(sil.transform, "Brim", PrimitiveType.Cylinder, new Vector3(0f, 1.8f, 0f), new Vector3(0.5f, 0.02f, 0.5f), K.Mats.Silhouette, false);
-            K.Box(sil.transform, "Hand", new Vector3(0f, 1.3f, -0.72f), new Vector3(0.12f, 0.16f, 0.04f), K.Mats.Silhouette, false);
-
-            // Seats
-            var seats = K.Group(root, "Seats").transform;
-            for (float z = -18f; z <= -2f; z += 1.6f)
-            {
-                for (float x = -9f; x <= 9f; x += 1.2f)
-                {
-                    if (Mathf.Abs(x) < 1.3f) continue; // centre aisle
-                    var seat = K.Group(seats, "Seat", new Vector3(x, 0f, z));
-                    K.Box(seat.transform, "Cushion", new Vector3(0f, 0.25f, 0f), new Vector3(0.95f, 0.5f, 0.8f), K.Mats.Velvet);
-                    K.Box(seat.transform, "Back", new Vector3(0f, 0.65f, -0.38f), new Vector3(0.95f, 0.8f, 0.12f), K.Mats.Velvet);
-                }
-            }
+            var house = BuildHouse(root);
+            var sil = house.Silhouette;
 
             // Projector on a stand at the back of the house
             var proj = K.Group(root, "Projector", new Vector3(0f, 0f, -19.5f));
@@ -132,6 +81,97 @@ namespace Voss.EditorTools
             ctrl.Configure(player.GetComponent<FirstPersonController>(), approach, chamberZone, exitZone, stageLights,
                 sil, projectorLight, exitSign, exitDoor, completeSign);
             root.gameObject.AddComponent<GameRestartController>();
+        }
+
+        public struct House
+        {
+            public GameObject Chamber;
+            public GameObject Silhouette;
+            public GameObject Plaque;
+        }
+
+        /// <summary>
+        /// The Voss Theatre auditorium, shared by the vanishing (prologue), the arrival and the ending:
+        /// shell, stage with stairs, curtains and proscenium sign, the glass chamber and, optionally, seats.
+        /// With lobbyDoorway the back wall has an opening onto the foyer instead of the laboratory door.
+        /// </summary>
+        public static House BuildHouse(Transform root, bool seats = true, bool lobbyDoorway = false)
+        {
+            var house = new House();
+            // Shell
+            K.FloorAndCeiling(root, "House", new Vector2(-14f, -22f), new Vector2(14f, 12f), H, K.Mats.Wood, K.Mats.Ceiling);
+            if (lobbyDoorway) K.Wall(root, "Wall_South", true, -22f, -14f, 14f, H, K.Mats.Wall, 0f, 2.4f, 3.2f);
+            else K.Wall(root, "Wall_South", true, -22f, -14f, 14f, H, K.Mats.Wall);
+            K.Wall(root, "Wall_North", true, 12f, -14f, 14f, H, K.Mats.Velvet);
+            K.Wall(root, "Wall_West", false, -14f, -22f, 12f, H, K.Mats.Wall);
+            K.Wall(root, "Wall_East", false, 14f, -22f, 12f, H, K.Mats.Wall, -19f, 2f, 3f);
+            if (!lobbyDoorway)
+            {
+                K.Box(root, "LabDoorBehind", new Vector3(0f, 1.5f, -21.8f), new Vector3(2f, 3f, 0.3f), K.Mats.BlackMetal);
+                K.Text3D(root, "LabDoorLabel", "VOSS LABORATORY", new Vector3(0f, 3.4f, -21.6f), Vector3.forward, 0.25f, new Color(0.78f, 0.62f, 0.32f), TextAnchor.MiddleCenter, FontStyle.Bold);
+            }
+
+            // Stage, with stairs of 20 cm risers so it can be climbed on foot
+            K.Box(root, "Stage", new Vector3(0f, 0.5f, 6.5f), new Vector3(20f, 1f, 9f), K.Mats.Wood);
+            for (int i = 0; i < 5; i++)
+            {
+                float top = 0.2f * (i + 1);
+                K.Box(root, "StageStep", new Vector3(0f, top * 0.5f, 2f - 0.15f - (4 - i) * 0.3f), new Vector3(4f, top, 0.3f), K.Mats.Wood);
+            }
+            K.Box(root, "Curtain_L", new Vector3(-9.6f, 5.5f, 10f), new Vector3(1.6f, 9f, 0.7f), K.Mats.Velvet);
+            K.Box(root, "Curtain_R", new Vector3(9.6f, 5.5f, 10f), new Vector3(1.6f, 9f, 0.7f), K.Mats.Velvet);
+            K.Box(root, "Curtain_Top", new Vector3(0f, 9f, 2.2f), new Vector3(22f, 2f, 0.5f), K.Mats.Velvet);
+            K.Box(root, "ProsceniumTrim", new Vector3(0f, 7.95f, 2.2f), new Vector3(22f, 0.1f, 0.55f), K.Mats.Brass, false);
+            // Velvet house curtains drawn back at the proscenium, and the theatre's name above the stage.
+            K.SurfaceBox(root, "HouseCurtain_L", new Vector3(-8.4f, 4f, 2.35f), new Vector3(2.6f, 7.9f, 0.25f), K.Mats.Curtain, false);
+            K.SurfaceBox(root, "HouseCurtain_R", new Vector3(8.4f, 4f, 2.35f), new Vector3(2.6f, 7.9f, 0.25f), K.Mats.Curtain, false);
+            var sign = K.Group(root, "TheatreSign", new Vector3(0f, 8.35f, 1.92f)).transform;
+            K.Box(sign, "Plate", Vector3.zero, new Vector3(5.2f, 0.55f, 0.06f), K.Mats.Silhouette, false);
+            K.Box(sign, "Frame", new Vector3(0f, 0f, 0.005f), new Vector3(5.35f, 0.66f, 0.05f), K.Mats.Brass, false);
+            K.Text3D(sign, "Text", "VOSS THEATRE", new Vector3(0f, 0f, -0.04f), Vector3.back, 0.36f, new Color(0.82f, 0.66f, 0.36f), TextAnchor.MiddleCenter, FontStyle.Bold);
+
+            // The original chamber
+            var chamber = K.Group(root, "GlassChamber", new Vector3(0f, 1f, 6f));
+            K.Box(chamber.transform, "Glass", new Vector3(0f, 1.2f, 0f), new Vector3(1.6f, 2.4f, 1.6f), K.Mats.Glass, false);
+            K.Box(chamber.transform, "Top", new Vector3(0f, 2.42f, 0f), new Vector3(1.7f, 0.06f, 1.7f), K.Mats.Brass);
+            K.Box(chamber.transform, "Base", new Vector3(0f, 0.03f, 0f), new Vector3(1.8f, 0.06f, 1.8f), K.Mats.Brass);
+            for (int c = 0; c < 4; c++)
+            {
+                float sx = (c % 2 == 0) ? -0.8f : 0.8f;
+                float sz = (c < 2) ? -0.8f : 0.8f;
+                K.Box(chamber.transform, "Post", new Vector3(sx, 1.2f, sz), new Vector3(0.06f, 2.4f, 0.06f), K.Mats.Brass);
+            }
+            var plaque = K.Group(root, "ChamberPlaque", new Vector3(0f, 1.3f, 4.9f));
+            K.Box(plaque.transform, "Plate", Vector3.zero, new Vector3(0.9f, 0.3f, 0.03f), K.Mats.Brass);
+            K.Text3D(plaque.transform, "Text", "THE IMPOSSIBLE EXIT", new Vector3(0f, 0f, -0.02f), Vector3.back, 0.08f, Color.black, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
+            var pi = plaque.AddComponent<InspectableObject>(); pi.Prompt = "Read plaque"; pi.Note = "The glass has never been opened. It was never closed on anyone.";
+
+            // Silhouette inside the glass
+            var sil = K.Group(chamber.transform, "VossSilhouette", new Vector3(0f, 0.06f, 0f));
+            K.Prim(sil.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 0.9f, 0f), new Vector3(0.45f, 0.9f, 0.45f), K.Mats.Silhouette, false);
+            K.Prim(sil.transform, "Hat", PrimitiveType.Cylinder, new Vector3(0f, 1.9f, 0f), new Vector3(0.36f, 0.12f, 0.36f), K.Mats.Silhouette, false);
+            K.Prim(sil.transform, "Brim", PrimitiveType.Cylinder, new Vector3(0f, 1.8f, 0f), new Vector3(0.5f, 0.02f, 0.5f), K.Mats.Silhouette, false);
+            K.Box(sil.transform, "Hand", new Vector3(0f, 1.3f, -0.72f), new Vector3(0.12f, 0.16f, 0.04f), K.Mats.Silhouette, false);
+
+            if (seats)
+            {
+                var seatGroup = K.Group(root, "Seats").transform;
+                for (float z = -18f; z <= -2f; z += 1.6f)
+                {
+                    for (float x = -9f; x <= 9f; x += 1.2f)
+                    {
+                        if (Mathf.Abs(x) < 1.3f) continue; // centre aisle
+                        var seat = K.Group(seatGroup, "Seat", new Vector3(x, 0f, z));
+                        K.Box(seat.transform, "Cushion", new Vector3(0f, 0.25f, 0f), new Vector3(0.95f, 0.5f, 0.8f), K.Mats.Velvet);
+                        K.Box(seat.transform, "Back", new Vector3(0f, 0.65f, -0.38f), new Vector3(0.95f, 0.8f, 0.12f), K.Mats.Velvet);
+                    }
+                }
+            }
+
+            house.Chamber = chamber;
+            house.Silhouette = sil;
+            house.Plaque = plaque;
+            return house;
         }
 
         private static void BuildDust(Transform root)

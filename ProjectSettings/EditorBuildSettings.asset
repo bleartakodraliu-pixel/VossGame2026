@@ -9,8 +9,17 @@ EditorBuildSettings:
     path: Assets/Scenes/00_MainMenu.unity
     guid: 1d518aa65de044a37bd1e0026307ca56
   - enabled: 1
+    path: Assets/Scenes/VossIntroduction.unity
+    guid: 409d5c2228c1e4384b3cf63d85023ead
+  - enabled: 1
+    path: Assets/Scenes/00b_Prologue.unity
+    guid: 174d0210ad8ae477286eefa32571bb1e
+  - enabled: 1
     path: Assets/Scenes/01_Invitation.unity
     guid: 3ddce808fb6f84fc6ab9e07ae01d8b97
+  - enabled: 1
+    path: Assets/Scenes/01b_TheatreArrival.unity
+    guid: ad3288c3d465f46d1aeb9106b8f3085a
   - enabled: 1
     path: Assets/Scenes/02_VossLaboratory.unity
     guid: 9eda0e164d1944dc399d6a9074175e0b

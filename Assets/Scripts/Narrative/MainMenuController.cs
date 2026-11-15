@@ -5,11 +5,11 @@ using Voss.UI;
 
 namespace Voss.Narrative
 {
-    /// <summary>Main menu scene: slow camera drift over a dark set, menu panel via UIManager.</summary>
+    /// <summary>Main menu scene: the camera breathes gently over the theatre set; menu panel via UIManager.</summary>
     public class MainMenuController : MonoBehaviour
     {
         [SerializeField] private Transform cameraRig;
-        [SerializeField] private float driftDegreesPerSecond = 1.5f;
+        [SerializeField] private float swayDegrees = 1.6f;
 
         public void Configure(Transform rig) { cameraRig = rig; }
 
@@ -28,7 +28,9 @@ namespace Voss.Narrative
 
         private void Update()
         {
-            if (cameraRig != null) cameraRig.Rotate(Vector3.up, driftDegreesPerSecond * Time.deltaTime, Space.World);
+            if (cameraRig == null) return;
+            float t = Time.time;
+            cameraRig.localRotation = Quaternion.Euler(Mathf.Sin(t * 0.11f) * swayDegrees * 0.35f, Mathf.Sin(t * 0.07f) * swayDegrees, 0f);
         }
 
         private void OnNewGame()

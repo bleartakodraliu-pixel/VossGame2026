@@ -8,33 +8,30 @@ using Voss.Core;
 using Voss.Interaction;
 using Voss.Narrative;
 using Voss.Puzzles;
+using Voss.UI;
 using K = Voss.EditorTools.VossBuildKit;
 
 namespace Voss.EditorTools
 {
     /// <summary>
-    /// 02_VossLaboratory: entrance hall with elevator and terminal, then PERCEPTION, REASON and MEMORY
-    /// strung one after another along corridors with blind turns, so the player only ever sees the
-    /// room they are in. A sealed corridor leads from MEMORY back to the hall for the finale: the
-    /// performance screen and its off-screen diorama, the final question terminal and the final exit.
+    /// 02_VossLaboratory as a hub: the Main Hall (elevator, experiment terminal, observation window)
+    /// with three chamber doors side by side on its north wall - PERCEPTION, REASON, MEMORY - each
+    /// opening onto its own corridor and sealed room. The doors unlock one by one as the player comes
+    /// back to the hall after each test. After MEMORY, a section of the hall's west wall rises: behind
+    /// it, the final experiment (performance screen, final question, the exit to the theatre).
     /// </summary>
     public static class LaboratoryBuilder
     {
         private const float H = 5f;                    // hall height
         private const float RoomH = 4.5f;
         private const float CorrH = 3.2f;              // corridor height
-        private const float ExitX = 2.8f;              // local x of the far-wall exit in PERCEPTION and REASON
-        private const float WayBackX = 12f;            // the corridor back from MEMORY meets the hall here
         private static readonly string[] RoomNames = { "PERCEPTION", "REASON", "MEMORY" };
 
-        // Every room is built in the same local frame: entrance door at z 7, corridor z 7..11,
-        // room z 11..23, x -4.2..4.2. These placements chain the rooms without overlap.
-        //   PERCEPTION  world x -12.2..-3.8, z 11..23   (entered from the hall)
-        //   REASON      world x  -2.2.. 6.2, z 31..43   (corridors A, B)
-        //   MEMORY      world x   7.8..16.2, z 31..43   (corridors C, D; entered from the north)
-        //   way back    world x  10.8..13.2, z  7..31   (corridor E, opened by the finale)
-        private static readonly Vector3[] RoomOrigin = { new Vector3(-8f, 0f, 0f), new Vector3(2f, 0f, 20f), new Vector3(12f, 0f, 54f) };
-        private static readonly float[] RoomYaw = { 0f, 0f, 180f };
+        // Every room is built in the same local frame: entrance door at z 7 (in the hall's north wall),
+        // corridor z 7..11, room z 11..23, x -4.2..4.2. Spaced 11 m apart so PERCEPTION's mirror niches
+        // never touch REASON.
+        private static readonly Vector3[] RoomOrigin = { new Vector3(-11f, 0f, 0f), new Vector3(0f, 0f, 0f), new Vector3(11f, 0f, 0f) };
+        private static readonly Vector3 HiddenDoorAt = new Vector3(-16f, 0f, -3f);
 
         private static readonly Color Cold = new Color(0.55f, 0.7f, 1f);
         private static readonly Color Brass = new Color(0.78f, 0.62f, 0.32f);
@@ -51,12 +48,8 @@ namespace Voss.EditorTools
 
             BuildHallShell();
             BuildRoomShells();
-            BuildConnectors();
 
             var hallLights = BuildHallLights(out var emergencyLights);
-            var toReason = RouteLights("Lights_ToReason", new Vector3(-5.2f, 2.9f, 25.2f), new Vector3(-1.2f, 2.9f, 25.8f), new Vector3(2f, 2.9f, 25.8f));
-            var toMemory = RouteLights("Lights_ToMemory", new Vector3(4.8f, 2.9f, 45f), new Vector3(4.8f, 2.9f, 48.2f), new Vector3(8.6f, 2.9f, 48.2f), new Vector3(12f, 2.9f, 48.2f));
-            var wayBack = RouteLights("Lights_WayBack", new Vector3(WayBackX, 2.9f, 28f), new Vector3(WayBackX, 2.9f, 21f), new Vector3(WayBackX, 2.9f, 14f), new Vector3(WayBackX, 2.9f, 9f));
             var entrance = BuildEntrance(hallLights, emergencyLights);
             var doors = BuildEntranceDoors();
 
@@ -64,20 +57,18 @@ namespace Voss.EditorTools
             var reason = BuildReasonRoom(out var reasonLights);
             var memoryTerminal = BuildMemoryRoom(out var memoryLights, out var memoryPuzzle);
 
-            var perceptionExit = BuildRoomExit(0, ExitX, "Sealed. The mirrors are not finished with you.", out var perceptionLamp);
-            var reasonExit = BuildRoomExit(1, ExitX, "Sealed. The scale has not settled.", out var reasonLamp);
-            var memoryExit = BuildRoomExit(2, 0f, "Sealed. The experiment is not over.", out _);
-            var hallReturn = BuildHallReturnDoor();
-            var principles = BuildPrinciples();
-
-            BuildSilhouetteEvent(toReason[2]);
-            var video = BuildPerformanceScreen();
+            var hiddenDoor = BuildFinalRoom(out var principles, out var finalLights, out var chamber, out var chamberProjection);
+            var video = BuildPerformanceScreens();
             var finalQuestion = BuildFinalQuestionTerminal();
-            var exitDoor = BuildFinalExit(out var exitSign, out var projectorLight);
+            // The projector above the seats: at the very end it puts Voss back in the glass, for a moment.
+            var projectorLight = K.SpotLight(root.Find("FinalExperiment"), "RevealProjector", new Vector3(-17.6f, 4.6f, -2.5f),
+                ChamberAt + new Vector3(0f, 1.3f, 0f), new Color(0.9f, 0.95f, 1f), 7f, 14f, 22f);
+            BuildSilhouetteEvent(root.Find("HallLights/HallLight_S").GetComponent<Light>());
 
-            // MEMORY keypad, in the last bend before MEMORY's door.
-            var keypad = K.Box(root, "MemoryDoorKeypad", new Vector3(13.0f, 1.4f, 48.4f), new Vector3(0.08f, 0.42f, 0.3f), K.Mats.Brass);
-            K.Text3D(root, "KeypadLabel", "7 8 9\n4 5 6\n1 2 3\n  0", new Vector3(12.95f, 1.4f, 48.4f), Vector3.left, 0.05f, Color.black, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
+            // MEMORY keypad, beside MEMORY's door in the hall.
+            float mx = RoomOrigin[2].x + 1.45f;
+            var keypad = K.Box(root, "MemoryDoorKeypad", new Vector3(mx, 1.4f, 6.8f), new Vector3(0.3f, 0.42f, 0.08f), K.Mats.Brass);
+            K.Text3D(root, "KeypadLabel", "7 8 9\n4 5 6\n1 2 3\n  0", new Vector3(mx, 1.4f, 6.75f), Vector3.back, 0.05f, Color.black, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
             keypad.AddComponent<MemoryDoorController>().Configure(doors[2]);
 
             // Managers
@@ -87,79 +78,136 @@ namespace Voss.EditorTools
 
             var reveal = managers.AddComponent<FinalRevealController>();
             var player = K.Player(root, new Vector3(0f, 0f, -8.6f), 0f);
-            reveal.Configure(exitDoor, projectorLight, exitSign, player.GetComponent<Voss.Player.FirstPersonController>());
+            reveal.Configure(projectorLight, chamberProjection, chamber, finalLights, video, player.GetComponent<Voss.Player.FirstPersonController>());
             finalQuestion.Configure(reveal, video, finalQuestion.GetComponentInChildren<TextMesh>());
 
-            // The way on opens only after each test is solved and its card has been taken.
-            K.Group(managers.transform, "Reveal_ToReason").AddComponent<DoorRevealSequence>().Configure(perceptionExit, GameFlag.ReasonUnlocked,
-                EvidenceIds.Read, toReason, null, perceptionLamp, "A door you never noticed. Observe more carefully.");
-            K.Group(managers.transform, "Reveal_ToMemory").AddComponent<DoorRevealSequence>().Configure(reasonExit, GameFlag.MemoryUnlocked,
-                EvidenceIds.Backwards, toMemory, reasonLights, reasonLamp, "Keep walking. Do not look behind you.");
+            // REASON's door opens the moment PERCEPTION is solved (no waiting for the card or the hall).
+            var toReason = K.Group(managers.transform, "Reveal_REASON").AddComponent<DoorRevealSequence>();
+            toReason.Configure(doors[1], GameFlag.ReasonUnlocked, null, new List<Light> { rooms[1].Find("CorridorLight").GetComponent<Light>() },
+                null, null, "The second door is open. REASON is waiting.");
+            toReason.SetDelay(0f);
+            // MEMORY's way is revealed when the player walks back into the hall from REASON.
+            var reasonGate = K.TriggerBox(root, "HallGate_REASON", new Vector3(RoomOrigin[1].x, 1.2f, 6.0f), new Vector3(2.4f, 2.4f, 2.0f)).gameObject.AddComponent<PlayerTriggerZone>();
+            var toMemory = K.Group(managers.transform, "Reveal_MEMORY").AddComponent<DoorRevealSequence>();
+            toMemory.Configure(null, GameFlag.MemoryUnlocked, EvidenceIds.Backwards, new List<Light> { rooms[2].Find("CorridorLight").GetComponent<Light>() },
+                null, null, "One door remains. You already know the number.");
+            toMemory.ConfigureGate(reasonGate, false);
+            // Taking the BACKWARDS card plunges REASON into darkness for a moment.
+            K.Group(managers.transform, "Blackout_REASON").AddComponent<EvidenceBlackout>().Configure(EvidenceIds.Backwards, reasonLights,
+                K.Group(rooms[1], "WhisperAt", new Vector3(0f, 1.6f, 11.5f)).transform);
+
+            // Status lamps beside the three doors.
+            var completed = new[] { GameFlag.PerceptionSolved, GameFlag.ReasonSolved, GameFlag.MetaCodeSolved };
+            for (int i = 0; i < 3; i++)
+            {
+                var at = new Vector3(RoomOrigin[i].x + 1.45f, 2.85f, 6.8f);
+                var lampGroup = K.Group(root, "DoorStatus_" + RoomNames[i], at).transform;
+                K.Box(lampGroup, "Housing", Vector3.zero, new Vector3(0.18f, 0.22f, 0.06f), K.Mats.BlackMetal, false);
+                var bulb = K.Prim(lampGroup, "Bulb", PrimitiveType.Sphere, new Vector3(0f, 0f, -0.05f), Vector3.one * 0.12f, K.Mats.Porcelain, false);
+                var light = K.PointLight(lampGroup, "Light", new Vector3(0f, 0f, -0.35f), new Color(1f, 0.1f, 0.06f), 0.9f, 3.5f);
+                // MEMORY's door opens by keypad; its lamp turns warm when the way is revealed (corridor light on).
+                var signal = i == 2 ? rooms[2].Find("CorridorLight").GetComponent<Light>() : null;
+                lampGroup.gameObject.AddComponent<DoorStatusLamp>().Configure(doors[i], signal, completed[i], light, bulb.GetComponent<Renderer>());
+            }
 
             var finale = managers.AddComponent<FinalInvestigationController>();
             finale.Configure(perception, reasonLights, memoryLights, hallLights, principles[0], principles[1], principles[2], video, finalQuestion,
-                new List<DoorController> { memoryExit, hallReturn }, wayBack);
+                new List<DoorController> { hiddenDoor }, finalLights);
             memoryPuzzle.Configure(memoryTerminal, memoryLights, finale);
 
             managers.AddComponent<GameRestartController>();
             entrance.transform.SetParent(managers.transform, true);
 
-            BuildAtmosphere(toMemory);
+            var hallWhispers = BuildAtmosphere();
             LaboratoryProps.Build(root, rooms);
             LaboratoryDressing.Build(root, rooms);
+
+            // The hall changes after every test.
+            var reds = new List<Light>(emergencyLights);
+            var underground = root.Find("Entrance/Underground");
+            if (underground != null)
+                foreach (Transform t in underground)
+                    if (t.name == "RedCageLamp" && t.Find("Light") != null) reds.Add(t.Find("Light").GetComponent<Light>());
+            var monitors = new List<TextMesh>();
+            for (int i = 0; i < 3; i++)
+            {
+                var m = root.Find("Entrance/ControlRoom/MonitorText_" + i);
+                if (m != null) monitors.Add(m.GetComponent<TextMesh>());
+            }
+            managers.AddComponent<HallProgression>().Configure(root.Find("HallLights/HallLight_N").GetComponent<Light>(), reds, hallWhispers, monitors);
+
+            BuildShadowZones(managers);
+        }
+
+        /// <summary>
+        /// Only the shadow-casting lights of the area the player is in cast shadows (see ShadowZones).
+        /// Each room's area reaches a little into the hall, so looking in through its door shows them too.
+        /// </summary>
+        private static void BuildShadowZones(GameObject managers)
+        {
+            List<Light> Lights(params string[] paths)
+            {
+                var list = new List<Light>();
+                foreach (var p in paths)
+                {
+                    var t = root.Find(p);
+                    if (t == null) { Debug.LogWarning("[Voss] No shadow light at " + p); continue; }
+                    list.Add(t.GetComponent<Light>());
+                }
+                return list;
+            }
+            var zones = managers.AddComponent<ShadowZones>();
+            zones.AddZone("Hall", new Bounds(new Vector3(0f, 2.5f, -1.5f), new Vector3(34f, 6f, 19f)),
+                Lights("HallLights/HallLight_W", "HallLights/HallLight_E", "Entrance/Underground/StageCorner/StageSpot"));
+            var roomLights = new[] { "PERCEPTIONRoom/PerceptionLight_A", "REASONRoom/ScaleLight", "MEMORYRoom/MemoryLight_A" };
+            for (int i = 0; i < 3; i++)
+                zones.AddZone(RoomNames[i], new Bounds(new Vector3(RoomOrigin[i].x, 2.5f, 14.5f), new Vector3(9.5f, 6f, 21f)), Lights(roomLights[i]));
+            zones.AddZone("Final", new Bounds(new Vector3(-23f, 2.5f, -2.5f), new Vector3(16f, 6f, 10f)),
+                Lights("FinalExperiment/ChamberLight", "FinalExperiment/RevealProjector"));
         }
 
         // ========================================================== atmosphere
 
         /// <summary>
-        /// Everything that makes the place feel inhabited by something: unreliable lamps, hard shadows,
-        /// dust in the air, room tone and distant noises, whispers in MEMORY, and two scripted scares
-        /// on the way (lamps dying behind the player, applause where there is no audience).
+        /// Unreliable lamps, hard shadows, dust, room tone and distant noises, whispers in MEMORY, a hall
+        /// that starts whispering later (returned, enabled by HallProgression), and applause in the room
+        /// behind the hidden door.
         /// </summary>
-        private static void BuildAtmosphere(List<Light> toMemory)
+        private static GameObject BuildAtmosphere()
         {
-            // Hard shadows from a few key lamps only (shadowed point lights are expensive).
             foreach (var path in new[] { "HallLights/HallLight_W", "HallLights/HallLight_E", "PERCEPTIONRoom/PerceptionLight_A", "REASONRoom/ScaleLight", "MEMORYRoom/MemoryLight_A" })
             {
                 var l = root.Find(path)?.GetComponent<Light>();
                 if (l != null) l.shadows = LightShadows.Soft;
             }
 
-            // Unreliable lamps.
             Flicker("HallLights/HallLight_N", 0.1f, new Vector2(5f, 12f), 0.5f);
-            Flicker("HallLights/VestibuleLight", 0.15f, new Vector2(3f, 9f), 0.4f);
-            Flicker("Lights_ToReason/Lamp_1", 0.12f, new Vector2(4f, 10f), 0.35f);
-            Flicker("Lights_WayBack/Lamp_1", 0.12f, new Vector2(3f, 8f), 0.5f);
-            Flicker("Lights_WayBack/Lamp_3", 0.1f, new Vector2(5f, 11f), 0.3f);
             Flicker("REASONRoom/ReasonLight_A", 0.06f, new Vector2(10f, 20f), 0.2f);
             Flicker("MEMORYRoom/MemoryLight_B", 0.12f, new Vector2(4f, 10f), 0.45f);
+            Flicker("FinalExperiment/FinalLight_B", 0.12f, new Vector2(3f, 8f), 0.4f);
 
-            // Dust hanging in the air.
             var dust = new Color(0.9f, 0.88f, 0.8f, 0.25f);
             K.Dust(root.Find("Entrance"), "Dust", new Vector3(0f, 2.5f, 0f), new Vector3(30f, 4.5f, 13f), 14f, dust);
             for (int i = 0; i < 3; i++) K.Dust(rooms[i], "Dust", new Vector3(0f, 2.2f, 17f), new Vector3(8f, 4f, 11f), 6f, dust);
+            K.Dust(root.Find("FinalExperiment"), "Dust", new Vector3(-23f, 2.4f, -2.5f), new Vector3(13f, 4.5f, 8.5f), 6f, dust);
 
-            // Room tone everywhere, with drips, creaks, knocks and steps somewhere out of sight.
             K.Group(root, "Soundscape").AddComponent<AmbientSoundscape>().Configure(
                 new[] { SfxId.Drip, SfxId.Drip, SfxId.Creak, SfxId.Creak, SfxId.Knock, SfxId.DistantSteps },
                 new Vector2(9f, 22f), new Vector2(4f, 9f), 1f, true, 0.3f);
 
-            // MEMORY whispers to whoever stands in it.
             var whisperZone = K.TriggerBox(rooms[2], "WhisperZone", new Vector3(0f, 2f, 17f), new Vector3(8.4f, 4f, 12f));
             whisperZone.gameObject.AddComponent<AmbientSoundscape>().Configure(new[] { SfxId.Whisper }, new Vector2(6f, 14f), new Vector2(1.5f, 3f), 1f);
 
+            // After REASON the hall itself begins to whisper (switched on by HallProgression).
+            var hallWhispers = K.TriggerBox(root.Find("Entrance"), "HallWhispers", new Vector3(0f, 2.5f, 0f), new Vector3(32f, 5f, 14f));
+            hallWhispers.gameObject.AddComponent<AmbientSoundscape>().Configure(new[] { SfxId.Whisper, SfxId.DistantSteps }, new Vector2(8f, 16f), new Vector2(2f, 5f), 1f);
+
+            // Behind the hidden door: applause for a performance nobody is watching.
             var scares = K.Group(root, "Scares").transform;
-
-            // Turning into D: the lamps behind the player die one by one, then footsteps where they were.
-            var stepsAt = K.Group(scares, "StepsBehind", new Vector3(4.8f, 1f, 44.5f));
-            K.TriggerBox(scares, "LampsDieBehind", new Vector3(6.8f, 1.2f, 48.2f), new Vector3(1.4f, 2.4f, 2.4f)).gameObject
-                .AddComponent<ScareTrigger>().Configure(GameFlag.MemoryUnlocked, new List<Light> { toMemory[0], toMemory[1] },
-                    true, SfxId.DistantSteps, stepsAt.transform, 1f, null);
-
-            // The way back: applause from the dark ahead, for a performance nobody is watching.
-            var applauseAt = K.Group(scares, "ApplauseAhead", new Vector3(WayBackX, 2f, 25f));
-            K.TriggerBox(scares, "ApplauseTrigger", new Vector3(WayBackX, 1.2f, 29f), new Vector3(2.2f, 2.4f, 1.6f)).gameObject
+            var applauseAt = K.Group(scares, "ApplauseAhead", new Vector3(-22f, 1.5f, -3f));
+            K.TriggerBox(scares, "ApplauseTrigger", new Vector3(-17.2f, 1.2f, -3f), new Vector3(1.6f, 2.4f, 2.4f)).gameObject
                 .AddComponent<ScareTrigger>().Configure(GameFlag.MetaCodeSolved, null, true, SfxId.Applause, applauseAt.transform, 1f, null);
+            return hallWhispers.gameObject;
         }
 
         private static void Flicker(string path, float wobble, Vector2 interval, float dropout)
@@ -178,11 +226,11 @@ namespace Voss.EditorTools
             K.FloorAndCeiling(hall, "Hall", new Vector2(-16f, -7f), new Vector2(16f, 7f), H, K.Mats.WetFloor, K.Mats.ConcreteCeiling);
             // South wall with elevator gap
             K.Wall(hall, "Wall_South", true, -7f, -16f, 16f, H, wall, 0f, 3f, 3f);
-            // North wall: PERCEPTION's door, and the unmarked door the way back will use
+            // North wall: the three chamber doors, all visible from the hall
             K.WallWithGaps(hall, "Wall_North", true, 7f, -16f, 16f, H, wall,
-                new Vector3(RoomOrigin[0].x, 2f, 3f), new Vector3(WayBackX, 2f, 3f));
-            // West wall with final exit gap
-            K.Wall(hall, "Wall_West", false, -16f, -7f, 7f, H, wall, -3f, 2f, 3f);
+                new Vector3(RoomOrigin[0].x, 2f, 3f), new Vector3(RoomOrigin[1].x, 2f, 3f), new Vector3(RoomOrigin[2].x, 2f, 3f));
+            // West wall: the opening of the hidden door (closed by a panel of the same wall)
+            K.Wall(hall, "Wall_West", false, -16f, -7f, 7f, H, wall, HiddenDoorAt.z, 2f, 3f);
             // East wall with the observation window (z -1..3, sill 1.1, head 2.4); the control room is behind it.
             K.Segment(hall, "Wall_East_S", false, 16f, -7f, -1f, 0f, H, wall);
             K.Segment(hall, "Wall_East_N", false, 16f, 3f, 7f, 0f, H, wall);
@@ -210,20 +258,18 @@ namespace Voss.EditorTools
             K.Box(elev, "ElevatorLamp", new Vector3(0f, 2.9f, -8.5f), new Vector3(0.6f, 0.05f, 0.6f), K.Mats.SignRed, false);
         }
 
-        /// <summary>The three rooms, each in its own placed and rotated group (see RoomOrigin).</summary>
+        /// <summary>The three chambers, each behind its own door and corridor, sealed off from the others.</summary>
         private static void BuildRoomShells()
         {
             for (int i = 0; i < 3; i++)
             {
                 var grp = K.Group(root, RoomNames[i] + "Room", RoomOrigin[i]).transform;
-                grp.localRotation = Quaternion.Euler(0f, RoomYaw[i], 0f);
                 rooms[i] = grp;
 
-                // Entrance corridor z 7..11. PERCEPTION's mouth is the hall wall; the others get a doorway wall.
+                // Entrance corridor z 7..11 (its mouth is the hall's north wall).
                 K.FloorAndCeiling(grp, "Corridor", new Vector2(-1.2f, 7f), new Vector2(1.2f, 11f), CorrH, K.Mats.WetFloor, K.Mats.ConcreteCeiling);
                 K.Wall(grp, "Corridor_W", false, -1.2f, 7f, 11f, CorrH, K.Mats.Cracked);
                 K.Wall(grp, "Corridor_E", false, 1.2f, 7f, 11f, CorrH, K.Mats.Cracked);
-                if (i > 0) K.Wall(grp, "Doorway", true, 7f, -1.2f, 1.2f, CorrH, K.Mats.Cracked, 0f, 2f, 3f);
 
                 // Room z 11..23. PERCEPTION is an art-deco mirror hall, REASON an old study, MEMORY raw concrete.
                 var wall = i == 0 ? K.Mats.Navy : i == 1 ? K.Mats.WarmPlaster : K.Mats.Cracked;
@@ -233,60 +279,19 @@ namespace Voss.EditorTools
                 K.Wall(grp, "Room_South", true, 11f, -4.2f, 4.2f, RoomH, wall, 0f, 2.4f, 3.2f);
                 if (i == 0)
                 {
-                    // Perception: side walls carry mirror niches at z 14 and 20; the far wall the statue niche and the exit.
+                    // Perception: side walls carry mirror niches at z 14 and 20, the far wall the statue niche.
                     var niches = new[] { new Vector3(14f, 1.8f, 2.6f), new Vector3(20f, 1.8f, 2.6f) };
                     K.WallWithGaps(grp, "Room_W", false, -4.2f, 11f, 23f, RoomH, wall, niches);
                     K.WallWithGaps(grp, "Room_E", false, 4.2f, 11f, 23f, RoomH, wall, niches);
-                    K.WallWithGaps(grp, "Room_North", true, 23f, -4.2f, 4.2f, RoomH, wall,
-                        new Vector3(0f, 1.8f, 2.6f), new Vector3(ExitX, 2f, 3f));
+                    K.Wall(grp, "Room_North", true, 23f, -4.2f, 4.2f, RoomH, wall, 0f, 1.8f, 2.6f);
                 }
                 else
                 {
                     K.Wall(grp, "Room_W", false, -4.2f, 11f, 23f, RoomH, wall);
                     K.Wall(grp, "Room_E", false, 4.2f, 11f, 23f, RoomH, wall);
-                    K.Wall(grp, "Room_North", true, 23f, -4.2f, 4.2f, RoomH, wall, i == 1 ? ExitX : 0f, 2f, 3f);
+                    K.Wall(grp, "Room_North", true, 23f, -4.2f, 4.2f, RoomH, wall);
                 }
             }
-        }
-
-        /// <summary>
-        /// World-space corridors between the rooms. Each bend is a dead-end wall straight ahead,
-        /// so nothing past the next turn is visible from a doorway.
-        /// </summary>
-        private static void BuildConnectors()
-        {
-            var c = K.Group(root, "Connectors").transform;
-            var m = K.Mats.Cracked;
-
-            // A: out of PERCEPTION's far wall, north, then the turn east.
-            Slab(c, "A", -6.4f, -4.0f, 23f, 27f);
-            K.Wall(c, "A_W", false, -6.4f, 23f, 27f, CorrH, m);
-            K.Wall(c, "A_N", true, 27f, -6.4f, -4.0f, CorrH, m);
-            K.Wall(c, "A_E", false, -4.0f, 23f, 24.6f, CorrH, m);
-            // B: east to REASON's door (in the north side of the last bend).
-            Slab(c, "B", -4.0f, 3.2f, 24.6f, 27f);
-            K.Wall(c, "B_S", true, 24.6f, -4.0f, 3.2f, CorrH, m);
-            K.Wall(c, "B_N", true, 27f, -4.0f, 0.8f, CorrH, m);
-            K.Wall(c, "B_E", false, 3.2f, 24.6f, 27f, CorrH, m);
-            // C: out of REASON's far wall, north, then the turn east.
-            Slab(c, "C", 3.6f, 6.0f, 43f, 49.4f);
-            K.Wall(c, "C_W", false, 3.6f, 43f, 49.4f, CorrH, m);
-            K.Wall(c, "C_N", true, 49.4f, 3.6f, 6.0f, CorrH, m);
-            K.Wall(c, "C_E", false, 6.0f, 43f, 47f, CorrH, m);
-            // D: east to MEMORY's door (in the south side of the last bend), keypad on the end wall.
-            Slab(c, "D", 6.0f, 13.2f, 47f, 49.4f);
-            K.Wall(c, "D_N", true, 49.4f, 6.0f, 13.2f, CorrH, m);
-            K.Wall(c, "D_E", false, 13.2f, 47f, 49.4f, CorrH, m);
-            K.Wall(c, "D_S", true, 47f, 6.0f, 10.8f, CorrH, m);
-            // E: the way back, from MEMORY's sealed exit straight down to the hall.
-            Slab(c, "E", WayBackX - 1.2f, WayBackX + 1.2f, 7f, 31f);
-            K.Wall(c, "E_W", false, WayBackX - 1.2f, 7f, 31f, CorrH, m);
-            K.Wall(c, "E_E", false, WayBackX + 1.2f, 7f, 31f, CorrH, m);
-        }
-
-        private static void Slab(Transform parent, string name, float x0, float x1, float z0, float z1)
-        {
-            K.FloorAndCeiling(parent, name, new Vector2(x0, z0), new Vector2(x1, z1), CorrH, K.Mats.WetFloor, K.Mats.ConcreteCeiling);
         }
 
         // ============================================================== lights
@@ -300,7 +305,6 @@ namespace Voss.EditorTools
                 K.PointLight(g, "HallLight_E", new Vector3(8f, 4.3f, 0f), Cold, 1.3f, 13f),
                 K.PointLight(g, "HallLight_S", new Vector3(0f, 4.3f, -4f), Cold, 1.0f, 11f),
                 K.PointLight(g, "HallLight_N", new Vector3(0f, 4.3f, 4f), Cold, 1.0f, 11f),
-                K.PointLight(g, "VestibuleLight", new Vector3(-17.5f, 2.8f, -3f), Cold, 0.6f, 5f),
                 K.PointLight(g, "ElevatorLight", new Vector3(0f, 2.7f, -8.5f), new Color(1f, 0.85f, 0.65f), 0.9f, 5f),
             };
             var red = new Color(1f, 0.12f, 0.08f);
@@ -310,18 +314,6 @@ namespace Voss.EditorTools
                 K.PointLight(g, "Emergency_C", new Vector3(0f, 4.2f, 0f), red, 2.2f, 11f),
                 K.PointLight(g, "Emergency_E", new Vector3(9f, 4.2f, 0f), red, 2.2f, 11f),
             };
-            return list;
-        }
-
-        /// <summary>Ceiling lamps along a corridor. They stay dark until the corridor is revealed.</summary>
-        private static List<Light> RouteLights(string name, params Vector3[] positions)
-        {
-            var g = K.Group(root, name).transform;
-            var list = new List<Light>();
-            for (int i = 0; i < positions.Length; i++)
-            {
-                list.Add(K.PointLight(g, "Lamp_" + i, positions[i], Cold, 0.6f, 6f));
-            }
             return list;
         }
 
@@ -355,19 +347,23 @@ namespace Voss.EditorTools
 
         // =============================================================== doors
 
+        /// <summary>
+        /// The three chamber doors, side by side in the hall's north wall. PERCEPTION is open from the
+        /// start; REASON is unlocked by its reveal, MEMORY by the keypad. Each seals behind the player
+        /// until its test is solved, then opens again from the inside.
+        /// </summary>
         private static DoorController[] BuildEntranceDoors()
         {
             var doors = new DoorController[3];
-            var flags = new[] { GameFlag.PerceptionUnlocked, GameFlag.ReasonUnlocked, GameFlag.None };
+            var flags = new[] { GameFlag.PerceptionUnlocked, GameFlag.None, GameFlag.None };
             var releases = new[] { GameFlag.PerceptionSolved, GameFlag.ReasonSolved, GameFlag.MetaCodeSolved };
             var lockedMsgs = new[] { "Locked.", "Sealed. Complete PERCEPTION first.", "Sealed. Use the keypad beside the door." };
 
             for (int i = 0; i < 3; i++)
             {
                 var grp = rooms[i];
-                // PERCEPTION's door sits in the tall hall wall; the others sit under a corridor ceiling.
-                var door = MakeDoor(grp, "Door_" + RoomNames[i], new Vector3(0f, 0f, 7f), RoomNames[i], i == 0);
-                door.Configure(door.transform.Find("Panel"), flags[i], lockedMsgs[i], true, releases[i], i == 2, RoomNames[i]);
+                var door = MakeDoor(grp, "Door_" + RoomNames[i], new Vector3(0f, 0f, 7f), RoomNames[i], true);
+                door.Configure(door.transform.Find("Panel"), flags[i], lockedMsgs[i], true, releases[i], i > 0, RoomNames[i]);
 
                 var sealZone = K.TriggerBox(grp, "SealTrigger", new Vector3(0f, 1.2f, 10f), new Vector3(2.2f, 2.4f, 1.6f));
                 sealZone.gameObject.AddComponent<DoorSealTrigger>().Bind(door);
@@ -400,52 +396,6 @@ namespace Voss.EditorTools
             K.Box(doorRoot.transform, "Frame_L", new Vector3(-1.1f, 1.6f, 0f), new Vector3(0.2f, 3.2f, 0.4f), K.Mats.Steel);
             K.Box(doorRoot.transform, "Frame_R", new Vector3(1.1f, 1.6f, 0f), new Vector3(0.2f, 3.2f, 0.4f), K.Mats.Steel);
             return doorRoot.AddComponent<DoorController>();
-        }
-
-        /// <summary>Far-wall door that leads on. Manual: a reveal sequence or the finale opens it.</summary>
-        private static DoorController BuildRoomExit(int i, float localX, string lockedMessage, out Light lamp)
-        {
-            var door = MakeDoor(rooms[i], "Exit_" + RoomNames[i], new Vector3(localX, 0f, 23f), null, true);
-            door.Configure(door.transform.Find("Panel"), GameFlag.None, lockedMessage, false, GameFlag.None, true, RoomNames[i] + " EXIT");
-            K.Box(door.transform, "LampHousing", new Vector3(0f, 3.5f, -0.2f), new Vector3(0.3f, 0.12f, 0.12f), K.Mats.BlackMetal, false);
-            lamp = null;
-            if (i == 2)
-            {
-                // MEMORY's far door looks like the way out. It is, eventually.
-                var sign = K.Box(door.transform, "ExitSign", new Vector3(0f, 3.75f, -0.2f), new Vector3(0.9f, 0.3f, 0.08f), K.Mats.SignRed, false);
-                K.Text3D(door.transform, "ExitSignText", "EXIT", new Vector3(0f, 3.75f, -0.25f), Vector3.back, 0.16f, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
-                K.PointLight(sign.transform.parent, "ExitGlow", new Vector3(0f, 3.5f, -0.6f), new Color(1f, 0.15f, 0.1f), 0.7f, 3.5f);
-            }
-            else
-            {
-                lamp = K.PointLight(door.transform, "DoorLamp", new Vector3(0f, 3.35f, -0.4f), new Color(1f, 0.12f, 0.08f), 0.9f, 3.5f);
-            }
-            return door;
-        }
-
-        private static DoorController BuildHallReturnDoor()
-        {
-            var door = MakeDoor(root.Find("Entrance"), "Door_WayBack", new Vector3(WayBackX, 0f, 7f), null, true);
-            door.Configure(door.transform.Find("Panel"), GameFlag.None, "It does not open from this side.", false, GameFlag.None, true, "WAY BACK");
-            K.Box(door.transform, "LampHousing", new Vector3(0f, 3.5f, -0.2f), new Vector3(0.3f, 0.12f, 0.12f), K.Mats.BlackMetal, false);
-            K.PointLight(door.transform, "DoorLamp", new Vector3(0f, 3.35f, -0.4f), new Color(1f, 0.12f, 0.08f), 0.6f, 3f);
-            return door;
-        }
-
-        /// <summary>The three principles, written along the way back. Walking south they read in test order.</summary>
-        private static GameObject[] BuildPrinciples()
-        {
-            var e = root.Find("Connectors");
-            var words = FinalInvestigationController.FinalWords;
-            var color = new Color(0.9f, 0.85f, 0.7f);
-            var result = new[]
-            {
-                K.Text3D(e, "Principle_Perception", words[0], new Vector3(WayBackX - 1.03f, 2.1f, 26f), Vector3.right, 0.22f, color, TextAnchor.MiddleCenter, FontStyle.Bold).gameObject,
-                K.Text3D(e, "Principle_Reason", words[1], new Vector3(WayBackX + 1.03f, 2.1f, 19f), Vector3.left, 0.22f, color, TextAnchor.MiddleCenter, FontStyle.Bold).gameObject,
-                K.Text3D(e, "Principle_Memory", words[2], new Vector3(WayBackX - 1.03f, 2.1f, 12f), Vector3.right, 0.22f, color, TextAnchor.MiddleCenter, FontStyle.Bold).gameObject,
-            };
-            foreach (var p in result) p.SetActive(false);
-            return result;
         }
 
         // ========================================================== perception
@@ -754,31 +704,188 @@ namespace Voss.EditorTools
 
         // ========================================================== silhouette
 
-        /// <summary>Waits at the far end of corridor B, in front of REASON's door; the trigger is the turn out of A.</summary>
+        /// <summary>
+        /// Coming out of PERCEPTION, the player sees him for the first time: a figure in the elevator
+        /// mouth across the hall, watching, then walking away. The lamp above fails; writing remains.
+        /// </summary>
         private static void BuildSilhouetteEvent(Light lamp)
         {
             var a = K.Group(root, "SilhouetteEvent").transform;
-            var fig = K.Group(a, "VossSilhouette", new Vector3(2f, 0f, 25.3f));
+            var fig = K.Group(a, "VossSilhouette", new Vector3(0f, 0f, -6.2f));
             K.Prim(fig.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 0.9f, 0f), new Vector3(0.45f, 0.9f, 0.45f), K.Mats.Silhouette, false);
             K.Prim(fig.transform, "Hat", PrimitiveType.Cylinder, new Vector3(0f, 1.9f, 0f), new Vector3(0.36f, 0.12f, 0.36f), K.Mats.Silhouette, false);
             K.Prim(fig.transform, "Brim", PrimitiveType.Cylinder, new Vector3(0f, 1.8f, 0f), new Vector3(0.5f, 0.02f, 0.5f), K.Mats.Silhouette, false);
-            var start = K.Group(a, "WalkStart", new Vector3(2f, 0f, 25.3f));
-            var end = K.Group(a, "WalkEnd", new Vector3(2f, 0f, 26.6f));
-            var writing = K.Text3D(a, "WallWriting", "DID YOU SEE ME?\nOR DID YOU EXPECT TO?", new Vector3(3.03f, 1.9f, 25.8f), Vector3.left, 0.16f, new Color(0.6f, 0.08f, 0.06f), TextAnchor.MiddleCenter, FontStyle.Bold);
-            var zone = K.TriggerBox(a, "SilhouetteTrigger", new Vector3(-2.9f, 1.2f, 25.8f), new Vector3(1.4f, 2.4f, 2.4f)).gameObject.AddComponent<PlayerTriggerZone>();
+            var start = K.Group(a, "WalkStart", new Vector3(0f, 0f, -6.2f));
+            var end = K.Group(a, "WalkEnd", new Vector3(2.6f, 0f, -6.2f));
+            var writing = K.Text3D(a, "WallWriting", "DID YOU SEE ME?\nOR DID YOU EXPECT TO?", new Vector3(0f, 4.05f, -6.83f), Vector3.forward, 0.16f, new Color(0.6f, 0.08f, 0.06f), TextAnchor.MiddleCenter, FontStyle.Bold);
+            var zone = K.TriggerBox(a, "SilhouetteTrigger", new Vector3(RoomOrigin[0].x, 1.2f, 5.4f), new Vector3(2.4f, 2.4f, 1.6f)).gameObject.AddComponent<PlayerTriggerZone>();
             var ev = a.gameObject.AddComponent<VossSilhouetteEvent>();
             ev.Configure(zone, fig.transform, start.transform, end.transform, writing.gameObject, lamp);
         }
 
-        // ============================================================== finale
+        // ======================================================= final experiment
 
-        private static VideoInvestigationController BuildPerformanceScreen()
+        private const float FinalH = 5f;
+        private static readonly Vector3 ChamberAt = new Vector3(-23f, 0f, -2.5f);
+
+        /// <summary>
+        /// The theatre behind the hall's west wall (x -30..-16, z -7..2). Until MEMORY is solved it does
+        /// not exist: its door is a section of the cracked wall, with no handle and no prompt. The finale
+        /// raises it. Inside: the glass chamber on a round stage in the middle of the room, two screens
+        /// with the recordings behind it, a few rows of seats, the principles on the north wall.
+        /// </summary>
+        private static DoorController BuildFinalRoom(out GameObject[] principles, out List<Light> lights, out Transform chamber, out GameObject chamberProjection)
         {
             var hall = root.Find("Entrance");
-            var frame = K.Box(hall, "PerformanceScreen", new Vector3(-9f, 2.5f, -6.85f), new Vector3(4.8f, 2.9f, 0.14f), K.Mats.BlackMetal);
-            var screen = K.Quad(hall, "PerformanceScreenSurface", new Vector3(-9f, 2.5f, -6.76f), new Vector2(4.5f, 2.55f), Vector3.forward, K.Mats.Screen);
-            var caption = K.Text3D(hall, "PerformanceCaption", "", new Vector3(-9f, 0.85f, -6.76f), Vector3.forward, 0.12f, new Color(0.78f, 0.62f, 0.32f), TextAnchor.MiddleCenter, FontStyle.Normal, 48);
-            K.Text3D(hall, "PerformanceTitle", "THE IMPOSSIBLE EXIT — RECONSTRUCTION", new Vector3(-9f, 4.15f, -6.76f), Vector3.forward, 0.18f, new Color(0.78f, 0.62f, 0.32f), TextAnchor.MiddleCenter, FontStyle.Bold, 48);
+            var f = K.Group(root, "FinalExperiment").transform;
+            var wall = K.Mats.Cracked;
+            K.FloorAndCeiling(f, "Final", new Vector2(-30f, -7f), new Vector2(-16f, 2f), FinalH, K.Mats.Marble, K.Mats.NavyCeiling);
+            K.Wall(f, "Final_N", true, 2f, -30f, -16f, FinalH, wall);
+            K.Wall(f, "Final_W", false, -30f, -7f, 2f, FinalH, wall);
+            K.Wall(f, "Final_S", true, -7f, -30f, -16f, FinalH, wall);
+
+            // The hidden door: a slab of the hall wall itself (built in the hall's space so its texture
+            // continues the wall's), a hair thinner so it can slide up into the wall above it.
+            var mover = K.Group(hall, "HiddenDoorPanel", HiddenDoorAt).transform;
+            var slab = K.SurfaceBox(hall, "WallSection", HiddenDoorAt + new Vector3(0f, 1.5f, 0f), new Vector3(0.26f, 3f, 2f), wall);
+            slab.transform.SetParent(mover, true);
+            // The controller sits apart from the slab, so looking at the wall shows no prompt.
+            var doorGo = K.Group(hall, "HiddenDoor", HiddenDoorAt);
+            var door = doorGo.AddComponent<DoorController>();
+            door.Configure(mover, GameFlag.None, "", false, GameFlag.None, true, "HIDDEN DOOR");
+
+            var burst = K.Dust(hall, "HiddenDoorDust", HiddenDoorAt + new Vector3(0.3f, 2.2f, 0f), new Vector3(0.4f, 1.5f, 2f), 0f, new Color(0.85f, 0.82f, 0.75f, 0.7f));
+            var main = burst.main;
+            main.loop = false;
+            main.playOnAwake = false;
+            main.prewarm = false;
+            main.duration = 2f;
+            main.startLifetime = 4f;
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.1f, 0.6f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.015f, 0.05f);
+            main.gravityModifier = 0.05f;
+            burst.emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 220), new ParticleSystem.Burst(0.6f, 120) });
+            doorGo.AddComponent<HiddenDoorFx>().Configure(door, burst, new List<Light>());
+
+            chamber = BuildGlassChamber(f, out chamberProjection);
+
+            lights = new List<Light>
+            {
+                K.PointLight(f, "FinalLight_A", new Vector3(-18.6f, 4.5f, -3f), new Color(1f, 0.82f, 0.62f), 1.0f, 8f),
+                K.PointLight(f, "FinalLight_B", new Vector3(-27.6f, 4.4f, -2.5f), Cold, 0.7f, 7f),
+                K.SpotLight(f, "ChamberLight", ChamberAt + new Vector3(0f, 4.85f, 0f), ChamberAt + new Vector3(0f, 0.3f, 0f), new Color(0.75f, 0.85f, 1f), 5f, 7f, 50f),
+                K.PointLight(f, "FinalRed_N", new Vector3(-18.5f, 3f, 1.3f), new Color(1f, 0.12f, 0.08f), 1.2f, 5f),
+                K.PointLight(f, "FinalRed_S", new Vector3(-27.5f, 3f, -6.3f), new Color(1f, 0.12f, 0.08f), 1.0f, 5f),
+            };
+
+            // Three short rows of seats facing the chamber, an aisle down the middle from the door.
+            for (int row = 0; row < 3; row++)
+                foreach (float z in new[] { -6.2f, -5.4f, -4.6f, -1.55f, -0.75f, 0.05f, 0.85f })
+                {
+                    if (row == 1 && Mathf.Approximately(z, -0.75f)) continue; // one seat is missing
+                    Seat(f, new Vector3(-19.8f + row * 1.2f, 0f, z));
+                }
+
+            // Curtains: either side of the screens, and along the side walls.
+            foreach (float z in new[] { -6.55f, 1.55f })
+                K.SurfaceBox(f, "Curtain_W", new Vector3(-29.75f, 2.5f, z), new Vector3(0.14f, 5f, 0.8f), K.Mats.Curtain, false);
+            K.SurfaceBox(f, "Pelmet", new Vector3(-29.75f, 4.7f, -2.5f), new Vector3(0.18f, 0.6f, 9f), K.Mats.Curtain, false);
+            foreach (float x in new[] { -28.8f, -26.2f, -19.8f, -17.2f })
+            {
+                K.SurfaceBox(f, "Curtain_N", new Vector3(x, 2.5f, 1.78f), new Vector3(0.9f, 5f, 0.14f), K.Mats.Curtain, false);
+                K.SurfaceBox(f, "Curtain_S", new Vector3(x, 2.5f, -6.78f), new Vector3(0.9f, 5f, 0.14f), K.Mats.Curtain, false);
+            }
+            K.Box(f, "Trim_N", new Vector3(-23f, 4.2f, 1.83f), new Vector3(14f, 0.06f, 0.04f), K.Mats.Gold, false);
+            K.Box(f, "Trim_S", new Vector3(-23f, 4.2f, -6.83f), new Vector3(14f, 0.06f, 0.04f), K.Mats.Gold, false);
+
+            // The three principles, one under another on the north wall, in test order.
+            var words = FinalInvestigationController.FinalWords;
+            var color = new Color(0.9f, 0.85f, 0.7f);
+            principles = new[]
+            {
+                K.Text3D(f, "Principle_Perception", words[0], new Vector3(-23f, 3.5f, 1.83f), Vector3.back, 0.2f, color, TextAnchor.MiddleCenter, FontStyle.Bold).gameObject,
+                K.Text3D(f, "Principle_Reason", words[1], new Vector3(-23f, 3.0f, 1.83f), Vector3.back, 0.2f, color, TextAnchor.MiddleCenter, FontStyle.Bold).gameObject,
+                K.Text3D(f, "Principle_Memory", words[2], new Vector3(-23f, 2.5f, 1.83f), Vector3.back, 0.2f, color, TextAnchor.MiddleCenter, FontStyle.Bold).gameObject,
+            };
+            foreach (var p in principles) p.SetActive(false);
+            return door;
+        }
+
+        private static void Seat(Transform parent, Vector3 at)
+        {
+            var seat = K.Group(parent, "Seat", at).transform;
+            seat.localRotation = Quaternion.Euler(0f, -90f, 0f); // facing the chamber (-x)
+            K.Box(seat, "Base", new Vector3(0f, 0.22f, 0f), new Vector3(0.5f, 0.44f, 0.5f), K.Mats.BlackMetal);
+            K.SurfaceBox(seat, "Cushion", new Vector3(0f, 0.5f, 0.02f), new Vector3(0.52f, 0.12f, 0.48f), K.Mats.Velvet, false);
+            K.SurfaceBox(seat, "Back", new Vector3(0f, 0.85f, 0.26f), new Vector3(0.52f, 0.7f, 0.1f), K.Mats.Velvet, false);
+            K.Box(seat, "ArmL", new Vector3(-0.28f, 0.6f, 0f), new Vector3(0.05f, 0.08f, 0.5f), K.Mats.Brass, false);
+            K.Box(seat, "ArmR", new Vector3(0.28f, 0.6f, 0f), new Vector3(0.05f, 0.08f, 0.5f), K.Mats.Brass, false);
+        }
+
+        /// <summary>
+        /// The glass chamber of The Impossible Exit on its round stage. Empty, as it always was; the
+        /// silhouette inside is only light, shown by the projector at the very end.
+        /// </summary>
+        private static Transform BuildGlassChamber(Transform f, out GameObject projection)
+        {
+            var c = K.Group(f, "GlassChamber", ChamberAt).transform;
+            K.Prim(c, "Dais", PrimitiveType.Cylinder, new Vector3(0f, 0.15f, 0f), new Vector3(3.4f, 0.15f, 3.4f), K.Mats.OldWood, false);
+            K.Prim(c, "DaisRim", PrimitiveType.Cylinder, new Vector3(0f, 0.305f, 0f), new Vector3(3.46f, 0.01f, 3.46f), K.Mats.Gold, false);
+            var daisCol = K.Group(c, "DaisCollider", new Vector3(0f, 0.15f, 0f)).AddComponent<BoxCollider>();
+            daisCol.size = new Vector3(2.6f, 0.3f, 2.6f);
+
+            const float y0 = 0.3f, h = 2.5f, hw = 0.75f;
+            K.Box(c, "ChamberBase", new Vector3(0f, y0 + 0.04f, 0f), new Vector3(1.7f, 0.08f, 1.7f), K.Mats.Brass);
+            K.Box(c, "ChamberTop", new Vector3(0f, y0 + h, 0f), new Vector3(1.7f, 0.1f, 1.7f), K.Mats.Brass);
+            foreach (float x in new[] { -hw, hw })
+                foreach (float z in new[] { -hw, hw })
+                    K.Box(c, "Post", new Vector3(x, y0 + h * 0.5f, z), new Vector3(0.07f, h, 0.07f), K.Mats.Brass, false);
+            K.Box(c, "Glass_E", new Vector3(hw, y0 + h * 0.5f, 0f), new Vector3(0.02f, h - 0.1f, 1.44f), K.Mats.Glass);
+            K.Box(c, "Glass_W", new Vector3(-hw, y0 + h * 0.5f, 0f), new Vector3(0.02f, h - 0.1f, 1.44f), K.Mats.Glass);
+            K.Box(c, "Glass_N", new Vector3(0f, y0 + h * 0.5f, hw), new Vector3(1.44f, h - 0.1f, 0.02f), K.Mats.Glass);
+            K.Box(c, "Glass_S", new Vector3(0f, y0 + h * 0.5f, -hw), new Vector3(1.44f, h - 0.1f, 0.02f), K.Mats.Glass);
+            K.Text3D(c, "Plaque", "THE IMPOSSIBLE EXIT", new Vector3(1.73f, 0.16f, 0f), Vector3.right, 0.06f, new Color(0.85f, 0.7f, 0.38f), TextAnchor.MiddleCenter, FontStyle.Bold, 48);
+
+            // Voss, made of projector light: a translucent glowing figure in hat and coat.
+            var glow = K.Transparent("ProjectionGlow", new Color(0.6f, 0.78f, 1f, 0.6f), 0f);
+            glow.EnableKeyword("_EMISSION");
+            glow.SetColor("_EmissionColor", new Color(0.45f, 0.65f, 1f) * 0.9f);
+            glow.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive; // else URP strips _EMISSION
+            UnityEditor.EditorUtility.SetDirty(glow);
+            var figure = K.Group(c, "ProjectedVoss", new Vector3(0f, y0, 0f));
+            K.Prim(figure.transform, "Body", PrimitiveType.Capsule, new Vector3(0f, 0.9f, 0f), new Vector3(0.45f, 0.9f, 0.45f), glow, false);
+            K.Prim(figure.transform, "Hat", PrimitiveType.Cylinder, new Vector3(0f, 1.9f, 0f), new Vector3(0.36f, 0.12f, 0.36f), glow, false);
+            K.Prim(figure.transform, "Brim", PrimitiveType.Cylinder, new Vector3(0f, 1.8f, 0f), new Vector3(0.5f, 0.02f, 0.5f), glow, false);
+            foreach (var r in figure.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            figure.SetActive(false);
+            projection = figure;
+            return c;
+        }
+
+        /// <summary>
+        /// Two screens on the west wall, either side of the chamber as seen from the seats: Camera A
+        /// (the audience) and Camera B (stage left), fed from a miniature stage far below the lab.
+        /// </summary>
+        private static VideoInvestigationController BuildPerformanceScreens()
+        {
+            var f = root.Find("FinalExperiment");
+            var group = K.Group(f, "PerformanceScreens");
+            const float x = -29.8f;
+            var gold = new Color(0.78f, 0.62f, 0.32f);
+            var surfaces = new Renderer[2];
+            var captions = new TextMesh[2];
+            var titles = new[] { "CAMERA A — AUDIENCE", "CAMERA B — STAGE LEFT" };
+            var zs = new[] { -4.8f, -0.2f };
+            for (int i = 0; i < 2; i++)
+            {
+                float z = zs[i];
+                K.Box(group.transform, "ScreenFrame_" + (i == 0 ? "A" : "B"), new Vector3(x, 2.7f, z), new Vector3(0.14f, 2.12f, 3.62f), K.Mats.BlackMetal);
+                surfaces[i] = K.Quad(group.transform, "ScreenSurface_" + (i == 0 ? "A" : "B"), new Vector3(x + 0.08f, 2.7f, z), new Vector2(3.4f, 1.91f), Vector3.right, K.Mats.Screen).GetComponent<Renderer>();
+                K.Text3D(group.transform, "ScreenTitle_" + (i == 0 ? "A" : "B"), titles[i], new Vector3(x + 0.1f, 3.95f, z), Vector3.right, 0.15f, gold, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
+                captions[i] = K.Text3D(group.transform, "Caption_" + (i == 0 ? "A" : "B"), "", new Vector3(x + 0.1f, 1.38f, z), Vector3.right, 0.1f, gold, TextAnchor.MiddleCenter, FontStyle.Normal, 48);
+                captions[i].GetComponent<WorldText>().FitWithin(new Vector2(3.4f, 0.42f));
+            }
+            K.Text3D(group.transform, "PerformanceTitle", "THE IMPOSSIBLE EXIT — RECONSTRUCTION", new Vector3(x + 0.1f, 4.4f, -2.5f), Vector3.right, 0.17f, gold, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
 
             // Diorama far below the lab, rendered only by its two cameras.
             var d = K.Group(root, "PerformanceDiorama", new Vector3(0f, -60f, 0f)).transform;
@@ -805,8 +912,9 @@ namespace Voss.EditorTools
             var camA = DioramaCamera(d, "CameraA_Audience", new Vector3(0f, 1.7f, 6.5f), new Vector3(0.5f, 1.2f, 0.4f), 40f);
             var camB = DioramaCamera(d, "CameraB_Secondary", new Vector3(-4f, 1.8f, -4f), new Vector3(0.5f, 1.2f, 0.3f), 55f);
 
-            var ctrl = frame.AddComponent<VideoInvestigationController>();
-            ctrl.Configure(voss.transform, projection.GetComponent<Renderer>(), stageLights, camA, camB, screen.GetComponent<Renderer>(), caption);
+            // One controller for both screens: looking at either frame finds it as their parent.
+            var ctrl = group.AddComponent<VideoInvestigationController>();
+            ctrl.Configure(voss.transform, projection.GetComponent<Renderer>(), stageLights, camA, camB, surfaces[0], surfaces[1], captions[0], captions[1]);
             return ctrl;
         }
 
@@ -826,45 +934,19 @@ namespace Voss.EditorTools
             return cam;
         }
 
+        /// <summary>The last terminal, at the front of the seats, its face turned to the aisle.</summary>
         private static FinalQuestionTerminal BuildFinalQuestionTerminal()
         {
-            var hall = root.Find("Entrance");
-            var t = K.Group(hall, "FinalQuestionTerminal", new Vector3(-11.5f, 0f, -5.4f));
+            var f = root.Find("FinalExperiment");
+            // Beside the aisle, turned toward it, so nothing stands between the seats and the chamber.
+            var t = K.Group(f, "FinalQuestionTerminal", new Vector3(-20.7f, 0f, -1.9f));
+            t.transform.localRotation = Quaternion.Euler(0f, -45f, 0f);
             K.Box(t.transform, "Pedestal", new Vector3(0f, 0.5f, 0f), new Vector3(0.7f, 1.0f, 0.5f), K.Mats.BlackMetal);
-            var screen = K.Group(t.transform, "Screen", new Vector3(0f, 1.4f, 0f));
+            var screen = K.Group(t.transform, "Screen", new Vector3(0f, 1.3f, 0f));
             screen.transform.localRotation = Quaternion.Euler(-15f, 0f, 0f);
-            K.Box(screen.transform, "ScreenBody", Vector3.zero, new Vector3(1.1f, 0.7f, 0.1f), K.Mats.Screen);
+            K.Box(screen.transform, "ScreenBody", Vector3.zero, new Vector3(1.0f, 0.6f, 0.1f), K.Mats.Screen);
             K.Text3D(screen.transform, "ScreenText", "", new Vector3(0f, 0f, -0.055f), Vector3.back, 0.05f, new Color(0.85f, 0.3f, 0.2f), TextAnchor.MiddleCenter, FontStyle.Bold, 48);
-            var terminal = screen.AddComponent<FinalQuestionTerminal>();
-            return terminal;
-        }
-
-        private static DoorController BuildFinalExit(out GameObject exitSign, out Light projectorLight)
-        {
-            var hall = root.Find("Entrance");
-            var v = K.Group(root, "FinalExit").transform;
-            // Vestibule behind the west wall gap (z -4..-2)
-            K.FloorAndCeiling(v, "Vestibule", new Vector2(-19.5f, -4f), new Vector2(-16f, -2f), 3.2f, K.Mats.WetFloor, K.Mats.ConcreteCeiling);
-            K.Wall(v, "Vestibule_N", true, -2f, -19.5f, -16f, 3.2f, K.Mats.Cracked);
-            K.Wall(v, "Vestibule_S", true, -4f, -19.5f, -16f, 3.2f, K.Mats.Cracked);
-            K.Wall(v, "Vestibule_W", false, -19.5f, -4f, -2f, 3.2f, K.Mats.Cracked);
-
-            var doorRoot = K.Group(v, "Door_FinalExit", new Vector3(-16f, 0f, -3f));
-            var panel = K.Box(doorRoot.transform, "Panel", new Vector3(0f, 1.5f, 0f), new Vector3(0.25f, 3f, 2f), K.Mats.BlackMetal);
-            K.Box(doorRoot.transform, "Frame_A", new Vector3(0f, 1.6f, -1.1f), new Vector3(0.4f, 3.2f, 0.2f), K.Mats.Brass);
-            K.Box(doorRoot.transform, "Frame_B", new Vector3(0f, 1.6f, 1.1f), new Vector3(0.4f, 3.2f, 0.2f), K.Mats.Brass);
-            var door = doorRoot.AddComponent<DoorController>();
-            door.Configure(panel.transform, GameFlag.FinalExitUnlocked, "Sealed. The experiment is not over.", false, GameFlag.None, true, "FINAL EXIT");
-
-            exitSign = K.Group(doorRoot.transform, "ExitSign", new Vector3(0.3f, 3.5f, 0f));
-            K.Box(exitSign.transform, "SignBody", Vector3.zero, new Vector3(0.08f, 0.3f, 0.9f), K.Mats.SignRed, false);
-            K.Text3D(exitSign.transform, "Text", "EXIT", new Vector3(0.05f, 0f, 0f), Vector3.right, 0.08f, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
-
-            var exitZone = K.TriggerBox(v, "TheatreExitTrigger", new Vector3(-18.6f, 1.2f, -3f), new Vector3(1.4f, 2.4f, 1.8f));
-            exitZone.gameObject.AddComponent<SceneExitTrigger>().Configure(SceneNames.Theatre, GameFlag.FinalExitUnlocked);
-
-            projectorLight = K.SpotLight(hall, "RevealProjector", new Vector3(-3f, 4.6f, 5f), new Vector3(-9f, 2.5f, -6.8f), new Color(0.9f, 0.95f, 1f), 6f, 20f, 30f);
-            return door;
+            return screen.AddComponent<FinalQuestionTerminal>();
         }
     }
 }

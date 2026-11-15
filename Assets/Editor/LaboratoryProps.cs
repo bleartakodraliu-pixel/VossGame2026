@@ -28,27 +28,25 @@ namespace Voss.EditorTools
             BuildSubjectDesk(hall);
             BuildObservationChair(hall);
             BuildPosters(hall);
-            BuildAudienceRow(hall);
 
             BuildPerceptionProps(K.Group(rooms[0], "Props").transform);
             BuildReasonProps(K.Group(rooms[1], "Props").transform);
             BuildMemoryProps(K.Group(rooms[2], "Props").transform);
-            BuildCorridorProps(K.Group(root.Find("Connectors"), "Props").transform);
+            BuildFinalRoomProps(K.Group(root.Find("FinalExperiment"), "Props").transform);
 
             var cams = K.Group(root, "SurveillanceCameras").transform;
             SurveillanceCamera(cams, new Vector3(-15.5f, 4.4f, 6.5f), new Vector3(1f, -0.4f, -1f));
             SurveillanceCamera(cams, new Vector3(15.5f, 4.4f, 6.5f), new Vector3(-1f, -0.4f, -1f));
-            SurveillanceCamera(cams, new Vector3(-3.7f, 2.9f, 26.7f), new Vector3(1f, -0.3f, -0.2f));
-            SurveillanceCamera(cams, new Vector3(6.3f, 2.9f, 49.1f), new Vector3(1f, -0.3f, -0.2f));
-            SurveillanceCamera(cams, new Vector3(11.1f, 2.9f, 30.6f), new Vector3(0.2f, -0.3f, -1f));
+            SurveillanceCamera(cams, new Vector3(-16.5f, 4.0f, 1.5f), new Vector3(-1f, -0.45f, -1f));
         }
 
         // ================================================================ hall
 
-        /// <summary>Cork board on the north wall: headlines about the vanishing, red string to his photo.</summary>
+        /// <summary>Cork board on the south wall: headlines about the vanishing, red string to his photo.</summary>
         private static void BuildEvidenceBoard(Transform hall)
         {
-            var b = K.Group(hall, "EvidenceBoard", new Vector3(0f, 2.1f, 6.8f)).transform;
+            var b = K.Group(hall, "EvidenceBoard", new Vector3(-9f, 2.1f, -6.8f)).transform;
+            b.localRotation = Quaternion.Euler(0f, 180f, 0f); // its front (local -z) faces the hall
             K.Box(b, "Cork", Vector3.zero, new Vector3(3.2f, 1.6f, 0.05f), K.Mats.Cork, false);
             K.Box(b, "Frame_T", new Vector3(0f, 0.82f, -0.01f), new Vector3(3.3f, 0.05f, 0.07f), K.Mats.Wood, false);
             K.Box(b, "Frame_B", new Vector3(0f, -0.82f, -0.01f), new Vector3(3.3f, 0.05f, 0.07f), K.Mats.Wood, false);
@@ -98,7 +96,8 @@ namespace Voss.EditorTools
         /// <summary>The files of the three subjects who came before. The numbers stop just short of the ticket.</summary>
         private static void BuildSubjectDesk(Transform hall)
         {
-            var d = K.Group(hall, "SubjectDesk", new Vector3(-12.2f, 0f, 6.3f)).transform;
+            var d = K.Group(hall, "SubjectDesk", new Vector3(-12.4f, 0f, -6.2f)).transform;
+            d.localRotation = Quaternion.Euler(0f, 180f, 0f); // against the south wall, facing the hall
             Table(d, Vector3.zero, new Vector2(1.8f, 0.7f), 0.78f);
 
             Paper(d, "File_7311", new Vector3(-0.55f, 0.79f, -0.05f), Quaternion.Euler(0f, 8f, 0f), new Vector2(0.22f, 0.3f),
@@ -119,14 +118,15 @@ namespace Voss.EditorTools
             lamp.gameObject.AddComponent<LightFlicker>().Configure(0.06f, new Vector2(8f, 16f), 0.25f);
 
             // Filing cabinet with one drawer pulled out, papers spilled on the floor.
-            var c = K.Group(hall, "FilingCabinet", new Vector3(-14.2f, 0f, 6.45f)).transform;
+            var c = K.Group(hall, "FilingCabinet", new Vector3(-15.2f, 0f, -6.45f)).transform;
+            c.localRotation = Quaternion.Euler(0f, 180f, 0f);
             K.Box(c, "Body", new Vector3(0f, 0.65f, 0f), new Vector3(0.55f, 1.3f, 0.6f), K.Mats.Rust);
             for (int i = 0; i < 3; i++) K.Box(c, "DrawerFront_" + i, new Vector3(0f, 0.25f + i * 0.4f, -0.305f), new Vector3(0.5f, 0.34f, 0.01f), K.Mats.BlackMetal, false);
             K.Box(c, "OpenDrawer", new Vector3(0f, 1.05f, -0.45f), new Vector3(0.48f, 0.3f, 0.35f), K.Mats.Rust);
             var rnd = new System.Random(7314);
             for (int i = 0; i < 7; i++)
             {
-                var p = K.Box(hall, "LoosePaper_" + i, new Vector3(-13.6f + (float)rnd.NextDouble() * 2.4f, 0.004f, 4.6f + (float)rnd.NextDouble() * 1.6f),
+                var p = K.Box(hall, "LoosePaper_" + i, new Vector3(-15.2f + (float)rnd.NextDouble() * 2.4f, 0.004f, -6.2f + (float)rnd.NextDouble() * 1.6f),
                     new Vector3(0.21f, 0.004f, 0.29f), K.Mats.OldPaper, false);
                 p.transform.localRotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
             }
@@ -190,18 +190,6 @@ namespace Voss.EditorTools
             K.Prim(m, "Head", PrimitiveType.Sphere, new Vector3(0f, 0.14f, 0.022f), new Vector3(0.13f, 0.16f, 0.01f), K.Mats.Silhouette, false);
             K.Box(m, "Hat", new Vector3(0f, 0.25f, 0.022f), new Vector3(0.14f, 0.08f, 0.01f), K.Mats.Silhouette, false);
             K.Text3D(m, "Body", "E. VOSS\nLAST SEEN ON STAGE\nSEVEN SECONDS BEFORE\nTHE LIGHTS RETURNED", new Vector3(0f, -0.4f, 0.02f), Vector3.forward, 0.045f, Ink, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
-        }
-
-        /// <summary>A row of theatre seats facing the performance screen: the lab keeps an audience.</summary>
-        private static void BuildAudienceRow(Transform hall)
-        {
-            var row = K.Group(hall, "AudienceRow", new Vector3(-9f, 0f, -2.4f)).transform;
-            for (int i = 0; i < 4; i++)
-            {
-                var seat = K.Group(row, "Seat_" + i, new Vector3(-1.65f + i * 1.1f, 0f, 0f)).transform;
-                K.Box(seat, "Cushion", new Vector3(0f, 0.25f, 0f), new Vector3(0.95f, 0.5f, 0.8f), K.Mats.Velvet);
-                K.Box(seat, "Back", new Vector3(0f, 0.65f, 0.38f), new Vector3(0.95f, 0.8f, 0.12f), K.Mats.Velvet);
-            }
         }
 
         // ========================================================== perception
@@ -444,20 +432,21 @@ namespace Voss.EditorTools
 
         // ========================================================== corridors
 
-        private static void BuildCorridorProps(Transform c)
+        /// <summary>Behind the hidden door: what is left of the show, kept around the edges of the final theatre.</summary>
+        private static void BuildFinalRoomProps(Transform c)
         {
-            // B: the show's poster, seen on the right while walking toward REASON.
-            var p = K.Group(c, "CorridorPoster", new Vector3(-1.5f, 1.7f, 24.77f)).transform;
+            // The show's poster on the south wall.
+            var p = K.Group(c, "ShowPosterSmall", new Vector3(-21.5f, 1.7f, -6.83f)).transform;
             K.Box(p, "Sheet", Vector3.zero, new Vector3(0.8f, 1.1f, 0.02f), K.Mats.Velvet, false);
             K.Text3D(p, "Text", "THE\nIMPOSSIBLE\nEXIT\n\nSEVEN SECONDS.\nONE CHAMBER.\nNO VOSS.", new Vector3(0f, 0f, 0.02f), Vector3.forward, 0.065f, BrassText, TextAnchor.MiddleCenter, FontStyle.Bold, 48);
 
-            // C: stage equipment dumped in the bend.
-            K.Prim(c, "FallenSpotlight", PrimitiveType.Cylinder, new Vector3(4.0f, 0.18f, 48.9f), new Vector3(0.3f, 0.25f, 0.3f), K.Mats.BlackMetal, false)
+            // Stage equipment dumped in the corner beside the screens.
+            K.Prim(c, "FallenSpotlight", PrimitiveType.Cylinder, new Vector3(-28.4f, 0.18f, 1.0f), new Vector3(0.3f, 0.25f, 0.3f), K.Mats.BlackMetal, false)
                 .transform.localRotation = Quaternion.Euler(90f, 30f, 0f);
-            K.Prim(c, "CableCoil", PrimitiveType.Cylinder, new Vector3(5.5f, 0.04f, 49.0f), new Vector3(0.5f, 0.04f, 0.5f), K.Mats.Silhouette, false);
+            K.Prim(c, "CableCoil", PrimitiveType.Cylinder, new Vector3(-27.8f, 0.04f, 1.2f), new Vector3(0.5f, 0.04f, 0.5f), K.Mats.Silhouette, false);
 
-            // D: a gurney with something under a sheet.
-            var g = K.Group(c, "Gurney", new Vector3(9.5f, 0f, 49.0f)).transform;
+            // A gurney with something under a sheet, against the south wall.
+            var g = K.Group(c, "Gurney", new Vector3(-27.0f, 0f, -6.2f)).transform;
             K.Box(g, "Frame", new Vector3(0f, 0.8f, 0f), new Vector3(2.0f, 0.05f, 0.55f), K.Mats.Rust);
             foreach (float x in new[] { -0.9f, 0.9f })
                 foreach (float z in new[] { -0.22f, 0.22f })
@@ -474,13 +463,15 @@ namespace Voss.EditorTools
             gi.Note = "A mannequin. Only a mannequin. You check twice.";
             gi.InspectRoot = body.transform;
 
-            // E (the way back): leftovers from the theatre.
-            var seats = K.Group(c, "StackedSeats", new Vector3(12.78f, 0f, 25f)).transform;
+            // Leftovers from the theatre: stacked seats, his costume rack.
+            var seats = K.Group(c, "StackedSeats", new Vector3(-24.6f, 0f, -6.4f)).transform;
+            seats.localRotation = Quaternion.Euler(0f, 90f, 0f);
             for (int i = 0; i < 3; i++)
             {
                 K.Box(seats, "Cushion_" + i, new Vector3(0f, 0.25f + i * 0.5f, -0.6f + i * 0.15f), new Vector3(0.5f, 0.45f, 0.9f), K.Mats.Velvet);
             }
-            var rack = K.Group(c, "CostumeRack", new Vector3(11.2f, 0f, 19f)).transform;
+            var rack = K.Group(c, "CostumeRack", new Vector3(-26.0f, 0f, 1.2f)).transform;
+            rack.localRotation = Quaternion.Euler(0f, 90f, 0f); // along the north wall
             K.Box(rack, "Rail", new Vector3(0f, 1.7f, 0f), new Vector3(0.04f, 0.04f, 1.4f), K.Mats.BlackMetal, false);
             K.Box(rack, "PostA", new Vector3(0f, 0.85f, -0.7f), new Vector3(0.04f, 1.7f, 0.04f), K.Mats.BlackMetal);
             K.Box(rack, "PostB", new Vector3(0f, 0.85f, 0.7f), new Vector3(0.04f, 1.7f, 0.04f), K.Mats.BlackMetal);
@@ -496,8 +487,9 @@ namespace Voss.EditorTools
             hi.Prompt = "Inspect hat";
             hi.Note = "His hat. The lining is still warm.";
 
-            // Stage plan on the west wall: the second projector, stage left.
-            var plan = K.Group(c, "StagePlan", new Vector3(10.97f, 1.6f, 16.4f)).transform;
+            // Stage plan on the wall shared with the hall: the second projector, stage left.
+            var plan = K.Group(c, "StagePlan", new Vector3(-16.17f, 1.6f, 0.4f)).transform;
+            plan.localRotation = Quaternion.Euler(0f, 180f, 0f); // its front (local +x) faces into the room
             K.Box(plan, "Sheet", Vector3.zero, new Vector3(0.02f, 0.9f, 1.4f), K.Mats.Accent, false);
             K.Text3D(plan, "Front", "THE IMPOSSIBLE EXIT\nSTAGE PLAN\n\n[ CHAMBER ]\n\nPROJECTOR B . . . STAGE LEFT\nCAMERA A . . . AUDIENCE\nCAMERA B . . . WINGS",
                 new Vector3(0.015f, 0f, 0f), Vector3.right, 0.045f, new Color(0.88f, 0.92f, 1f), TextAnchor.MiddleCenter, FontStyle.Bold, 48);

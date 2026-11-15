@@ -7,7 +7,7 @@ using Voss.UI;
 
 namespace Voss.Narrative
 {
-    /// <summary>The last terminal: HOW DID VOSS ESCAPE THE CHAMBER?</summary>
+    /// <summary>The last terminal, in front of the glass chamber: HOW DID VOSS DISAPPEAR?</summary>
     public class FinalQuestionTerminal : MonoBehaviour, IInteractable
     {
         [SerializeField] private FinalRevealController reveal;
@@ -17,8 +17,14 @@ namespace Voss.Narrative
         private bool armed;
         private bool answered;
 
-        public static readonly string Question = "HOW DID VOSS ESCAPE THE CHAMBER?";
-        public static readonly string[] Options = { "Hidden Tunnel", "Secret Door", "Trap Floor", "He Never Entered" };
+        public static readonly string Question = "HOW DID VOSS DISAPPEAR?";
+        public static readonly string[] Options =
+        {
+            "He escaped through a hidden tunnel beneath the stage.",
+            "He slipped out through a secret door in the chamber.",
+            "A trap floor dropped him under the stage during the blackout.",
+            "Voss never entered the glass chamber. The audience only saw a projection.",
+        };
 
         public static bool IsCorrect(int index) => index == Answers.FinalCorrectChoiceIndex;
 
@@ -76,7 +82,7 @@ namespace Voss.Narrative
             gm?.Audio.Play(SfxId.Reject, 0.8f);
             ui.Choice.Close();
             string hint = video != null && !video.ViewedCameraB
-                ? "You are still asking how he got out. Watch the other camera."
+                ? "You are still asking how he got out. Watch the second screen: Camera B."
                 : "You are still asking how he got out. Ask whether he was ever in.";
             gm?.VossSays(hint, 4f);
         }

@@ -46,6 +46,7 @@ namespace Voss.Core
             }
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            GameSettings.Load();
 
             attempts = gameObject.AddComponent<AttemptManager>();
             attempts.Bind(state);
@@ -95,12 +96,13 @@ namespace Voss.Core
 
         // ---------------------------------------------------------------- flow
 
+        /// <summary>From the menu: step into the theatre shown behind the menu.</summary>
         public void StartNewGame()
         {
             ResetAll();
             state.SetStatus(GameStatus.Playing);
             state.SetStage(GameStage.Introduction);
-            transitions.LoadScene(SceneNames.Invitation);
+            transitions.LoadScene(SceneNames.Introduction);
         }
 
         public void RestartExperiment()
@@ -108,7 +110,7 @@ namespace Voss.Core
             ResetAll();
             state.SetStatus(GameStatus.Playing);
             state.SetStage(GameStage.Introduction);
-            transitions.LoadScene(SceneNames.Invitation);
+            transitions.LoadScene(SceneNames.Introduction);
         }
 
         public void ReturnToMainMenu()

@@ -14,6 +14,7 @@ namespace Voss.UI
         private MaterialPropertyBlock properties;
         private string lastText;
         private bool needsRefresh;
+        private int pollOffset;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void RegisterScenes()
@@ -40,6 +41,7 @@ namespace Voss.UI
             if (material != null) textRenderer.sharedMaterial = material;
             if (maxSize == Vector2.zero) FindCardBounds();
             Font.textureRebuilt += OnFontRebuilt;
+            pollOffset = (int)((uint)GetHashCode() % 4u);
             Refresh();
         }
 
@@ -52,7 +54,12 @@ namespace Voss.UI
 
         private void LateUpdate()
         {
-            if (needsRefresh || textMesh.text != lastText) Refresh();
+            if (needsRefresh) { Refresh(); return; }
+            // Reading TextMesh.text allocates a new string, and there are a hundred lettered objects in a
+            // scene. Only text fitted to a card or screen needs re-fitting when it changes, so only that
+            // is polled, a few times a second. Glyphs for new text are requested by TextMesh itself.
+            if (maxSize.x <= 0f || maxSize.y <= 0f || ((Time.frameCount + pollOffset) & 3) != 0) return;
+            if (textMesh.text != lastText) Refresh();
         }
 
         public void FitWithin(Vector2 size)

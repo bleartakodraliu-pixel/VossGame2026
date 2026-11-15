@@ -5,7 +5,11 @@ using Voss.Player;
 
 namespace Voss.Puzzles
 {
-    /// <summary>Opaque, perspective-correct mirror. Captures in LateUpdate, outside the URP render loop.</summary>
+    /// <summary>
+    /// Opaque, perspective-correct mirror. Captures in LateUpdate, outside the URP render loop, and only
+    /// when the viewer can actually see it: each capture renders the whole scene again, so a mirror
+    /// behind a wall (PERCEPTION seen from the Main Hall) must not render at all.
+    /// </summary>
     [DefaultExecutionOrder(200)]
     public class PlanarMirror : MonoBehaviour
     {
@@ -20,6 +24,10 @@ namespace Voss.Puzzles
         private bool impossible;
         private bool reflectionVisible = true;
         private readonly UniversalRenderPipeline.SingleCameraRequest request = new UniversalRenderPipeline.SingleCameraRequest();
+
+        // Points on the mirror (fractions of its half-size) tested for a clear line of sight.
+        private static readonly Vector2[] SightSamples = { Vector2.zero, new Vector2(-0.7f, -0.7f), new Vector2(0.7f, -0.7f), new Vector2(-0.7f, 0.7f), new Vector2(0.7f, 0.7f) };
+        private const int SightMask = ~((1 << MirrorLayer) | (1 << ReflectionOnlyLayer) | (1 << FirstPersonHands.HandsLayer));
 
         public void Configure(Transform realObject, Transform reflectionDouble, bool isImpossible, Material mirrorMaterial)
         {
@@ -86,6 +94,7 @@ namespace Voss.Puzzles
             Vector3 offset = source.transform.position - point;
             if (Vector3.Dot(normal, offset) <= 0.02f || offset.sqrMagnitude > 625f) return;
             if (!GeometryUtility.TestPlanesAABB(GeometryUtility.CalculateFrustumPlanes(source), surface.bounds)) return;
+            if (!InLineOfSight(source.transform.position, normal)) return;
 
             EnsureCamera();
             reflectionCamera.CopyFrom(source);
@@ -132,6 +141,19 @@ namespace Voss.Puzzles
                     for (int i = 0; i < realRenderers.Length; i++)
                         if (realRenderers[i] != null) realRenderers[i].forceRenderingOff = originalForceOff[i];
             }
+        }
+
+        /// <summary>True if any of a few points on the mirror can be seen from <paramref name="eye"/> without a wall in between.</summary>
+        private bool InLineOfSight(Vector3 eye, Vector3 normal)
+        {
+            var local = surface.localBounds;
+            var half = local.extents;
+            foreach (var s in SightSamples)
+            {
+                Vector3 p = surface.transform.TransformPoint(local.center + new Vector3(s.x * half.x, s.y * half.y, 0f)) + normal * 0.05f;
+                if (!Physics.Linecast(eye, p, SightMask, QueryTriggerInteraction.Ignore)) return true;
+            }
+            return false;
         }
 
         public static Matrix4x4 ReflectionMatrix(Vector3 normal, Vector3 point)

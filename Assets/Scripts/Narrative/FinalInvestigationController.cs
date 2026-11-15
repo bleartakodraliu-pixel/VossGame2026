@@ -11,9 +11,9 @@ using Voss.UI;
 namespace Voss.Narrative
 {
     /// <summary>
-    /// THE REAL FINAL TEST. Illuminates all three rooms, opens the way back to the hall (whose walls
-    /// carry the three principles), switches on the performance reconstruction and arms the final
-    /// question terminal.
+    /// THE REAL FINAL TEST. Illuminates all three rooms, opens the hidden door in the Main Hall onto the
+    /// final experiment (where the three principles appear), switches on the performance reconstruction
+    /// and arms the final question terminal.
     /// </summary>
     public class FinalInvestigationController : MonoBehaviour
     {
@@ -30,6 +30,8 @@ namespace Voss.Narrative
         [SerializeField] private List<Light> wayBackLights = new List<Light>();
 
         private bool begun;
+
+        public const string FinalObjective = "Go through the new door in the Main Hall. Watch both screens, then answer: how did Voss disappear?";
 
         public static readonly string[] FinalWords = { "DO NOT TRUST WHAT YOU SEE.", "DO NOT TRUST YOUR FIRST ANSWER.", "REMEMBER WHAT YOU ALREADY KNOW." };
 
@@ -97,8 +99,9 @@ namespace Voss.Narrative
             {
                 gm.VossSays("Three principles. One performance. Watch it again.", 4f);
                 yield return new WaitForSeconds(4.2f);
-                gm.VossSays("The way back is open. The screen in the hall is waiting for you.", 4f);
+                gm.VossSays("A door has opened in the hall. The final experiment is waiting.", 4f);
             }
+            ui?.ShowObjective(FinalObjective);
             gm?.Audio.PlayMusic(MusicId.Drone, 6f);
         }
 

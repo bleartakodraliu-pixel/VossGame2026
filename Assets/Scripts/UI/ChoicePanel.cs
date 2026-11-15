@@ -56,17 +56,29 @@ namespace Voss.UI
             foreach (var b in buttons) UnityEngine.Object.Destroy(b.gameObject);
             buttons.Clear();
 
+            // Sentence-long answers get a wider card and taller buttons so they fit on two lines.
+            int longest = 0;
+            foreach (var o in options) longest = Mathf.Max(longest, o?.Length ?? 0);
+            bool wide = longest > 32;
+            float buttonWidth = wide ? 680f : 420f;
+            float buttonHeight = wide ? 64f : 52f;
+
             for (int i = 0; i < options.Count; i++)
             {
                 int index = i;
                 var btn = UIFactory.Button(buttonHost, "Option_" + i, options[i], 18, () => Select(index));
-                UIFactory.Height(btn, 52f);
+                UIFactory.Height(btn, buttonHeight);
+                var label = btn.GetComponentInChildren<Text>();
+                if (label != null && wide) label.rectTransform.offsetMin = new Vector2(18f, 0f);
+                if (label != null && wide) label.rectTransform.offsetMax = new Vector2(-18f, 0f);
                 buttons.Add(btn);
             }
 
-            float h = 200f + options.Count * 62f;
-            card.sizeDelta = new Vector2(620f, Mathf.Max(360f, h));
-            buttonHost.sizeDelta = new Vector2(420f, options.Count * 62f);
+            float h = 200f + options.Count * (buttonHeight + 10f);
+            card.sizeDelta = new Vector2(buttonWidth + 200f, Mathf.Max(360f, h));
+            buttonHost.sizeDelta = new Vector2(buttonWidth, options.Count * (buttonHeight + 10f));
+            title.rectTransform.sizeDelta = new Vector2(buttonWidth + 160f, 50f);
+            body.rectTransform.sizeDelta = new Vector2(buttonWidth + 140f, 90f);
             root.SetActive(true);
         }
 

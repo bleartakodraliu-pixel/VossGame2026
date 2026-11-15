@@ -38,7 +38,10 @@ namespace Voss.Core
     public static class SceneNames
     {
         public const string MainMenu = "00_MainMenu";
+        public const string Introduction = "VossIntroduction";    // playable theatre: envelope, letter, laboratory door
+        public const string Prologue = "00b_Prologue";            // the vanishing, seen from the audience
         public const string Invitation = "01_Invitation";
+        public const string Arrival = "01b_TheatreArrival";       // the abandoned theatre and its hidden elevator
         public const string Laboratory = "02_VossLaboratory";
         public const string Theatre = "03_EmptyTheatre";
     }
@@ -47,6 +50,7 @@ namespace Voss.Core
     public static class EvidenceIds
     {
         public const string Ticket = "voss_ticket";
+        public const string Letter = "voss_letter";
         public const string Read = "card_read";
         public const string Backwards = "card_backwards";
     }

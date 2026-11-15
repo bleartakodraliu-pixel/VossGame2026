@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Voss.Audio;
 using Voss.Core;
 using Voss.Interaction;
@@ -10,9 +11,11 @@ using Voss.UI;
 namespace Voss.Narrative
 {
     /// <summary>
-    /// Frame-by-frame reconstruction of The Impossible Exit, rendered from a miniature stage
-    /// into a render texture on the performance screen. Camera A (audience) sells the illusion;
-    /// Camera B (side) shows Voss sliding into darkness while a projected silhouette fills the chamber.
+    /// Frame-by-frame reconstruction of The Impossible Exit, rendered from a miniature stage onto the
+    /// two screens of the final theatre: Camera A (audience) sells the illusion, Camera B (stage left)
+    /// shows Voss sliding into darkness while a projected silhouette fills the chamber. The recording
+    /// loops on its own; the player can step through it frame by frame. The feeds are stills, so each
+    /// camera renders once per frame change instead of every display frame.
     /// </summary>
     public class VideoInvestigationController : MonoBehaviour, IInteractable, IVideoControlTarget
     {
@@ -27,36 +30,49 @@ namespace Voss.Narrative
             public string captionB;
         }
 
+        private static readonly Color CaptionFocus = new Color(0.9f, 0.74f, 0.4f);
+        private static readonly Color CaptionDim = new Color(0.55f, 0.45f, 0.26f);
+
         [SerializeField] private Transform vossFigure;
         [SerializeField] private Renderer projectionQuad;
         [SerializeField] private List<Light> stageLights = new List<Light>();
         [SerializeField] private Camera cameraA;
         [SerializeField] private Camera cameraB;
-        [SerializeField] private Renderer screenRenderer;
-        [SerializeField] private TextMesh caption;
-        [SerializeField] private float secondsPerFrame = 0.9f;
+        [SerializeField] private Renderer screenA;
+        [SerializeField] private Renderer screenB;
+        [SerializeField] private TextMesh captionA;
+        [SerializeField] private TextMesh captionB;
+        [SerializeField] private float secondsPerFrame = 1.1f;
+        [SerializeField] private float holdSeconds = 3f;
         [SerializeField] private List<Frame> frames = new List<Frame>();
 
-        private RenderTexture rt;
+        private RenderTexture rtA, rtB;
+        private RenderPipeline.StandardRequest requestA, requestB;
         private Material projectionMaterial;
         private int frameIndex;
         private bool playing;
         private bool usingCameraB;
         private bool available;
         private bool viewedCameraB;
+        private bool controlsOpen;
+        private bool frozen;
         private Coroutine playRoutine;
+        private Coroutine loopRoutine;
 
         public bool ViewedCameraB => viewedCameraB;
 
-        public void Configure(Transform voss, Renderer projection, List<Light> lights, Camera a, Camera b, Renderer screen, TextMesh captionMesh)
+        public void Configure(Transform voss, Renderer projection, List<Light> lights, Camera a, Camera b,
+            Renderer screenARenderer, Renderer screenBRenderer, TextMesh captionAMesh, TextMesh captionBMesh)
         {
             vossFigure = voss;
             projectionQuad = projection;
             stageLights = lights;
             cameraA = a;
             cameraB = b;
-            screenRenderer = screen;
-            caption = captionMesh;
+            screenA = screenARenderer;
+            screenB = screenBRenderer;
+            captionA = captionAMesh;
+            captionB = captionBMesh;
             frames = BuildDefaultFrames();
         }
 
@@ -85,34 +101,71 @@ namespace Voss.Narrative
 
         private void Start()
         {
-            rt = new RenderTexture(1024, 576, 16);
-            rt.name = "PerformanceScreenRT";
-            if (cameraA != null) { cameraA.targetTexture = rt; cameraA.enabled = false; }
-            if (cameraB != null) { cameraB.targetTexture = rt; cameraB.enabled = false; }
+            rtA = new RenderTexture(768, 432, 16) { name = "PerformanceCameraA" };
+            rtB = new RenderTexture(768, 432, 16) { name = "PerformanceCameraB" };
+            requestA = new RenderPipeline.StandardRequest { destination = rtA };
+            requestB = new RenderPipeline.StandardRequest { destination = rtB };
+            // The cameras never render on their own; RenderFeeds draws them when the picture changes.
+            if (cameraA != null) cameraA.enabled = false;
+            if (cameraB != null) cameraB.enabled = false;
             if (projectionQuad != null) projectionMaterial = projectionQuad.material;
             ApplyFrame(0);
-            SetScreenActive(false);
+            SetScreensActive(false);
         }
 
         private void OnDestroy()
         {
-            if (rt != null) { rt.Release(); Destroy(rt); }
+            if (rtA != null) { rtA.Release(); Destroy(rtA); }
+            if (rtB != null) { rtB.Release(); Destroy(rtB); }
         }
 
         /// <summary>Called by the final investigation once the real test begins.</summary>
         public void MakeAvailable()
         {
+            if (available) return;
             available = true;
-            SetScreenActive(true);
-            SelectCamera(false);
+            SetScreensActive(true);
             ApplyFrame(0);
+            loopRoutine = StartCoroutine(Loop());
             GameManager.Instance?.Audio.PlayAt(SfxId.Projector, transform.position, 0.8f);
         }
 
-        private void SetScreenActive(bool on)
+        /// <summary>Stops the loop on the last frame: the chamber, empty, from both sides.</summary>
+        public void ShowFinalFrame()
         {
-            if (screenRenderer == null) return;
-            var m = screenRenderer.material;
+            frozen = true;
+            Pause();
+            if (loopRoutine != null) StopCoroutine(loopRoutine);
+            loopRoutine = null;
+            ApplyFrame(frames.Count - 1);
+        }
+
+        private IEnumerator Loop()
+        {
+            while (!frozen)
+            {
+                bool atEnd = frameIndex >= frames.Count - 1;
+                yield return new WaitForSeconds(atEnd ? holdSeconds : secondsPerFrame);
+                if (controlsOpen || frozen) continue;
+                ApplyFrame(atEnd ? 0 : frameIndex + 1);
+            }
+        }
+
+        private void SetScreensActive(bool on)
+        {
+            SetScreen(screenA, rtA, on);
+            SetScreen(screenB, rtB, on);
+            if (!on)
+            {
+                if (captionA != null) captionA.text = string.Empty;
+                if (captionB != null) captionB.text = string.Empty;
+            }
+        }
+
+        private static void SetScreen(Renderer screen, RenderTexture rt, bool on)
+        {
+            if (screen == null) return;
+            var m = screen.material;
             if (on)
             {
                 m.SetTexture("_BaseMap", rt);
@@ -129,7 +182,20 @@ namespace Voss.Narrative
                 m.SetColor("_Color", new Color(0.02f, 0.02f, 0.025f));
                 m.SetColor("_EmissionColor", Color.black);
             }
-            if (caption != null) caption.text = on ? "PERFORMANCE RECONSTRUCTION — READY" : string.Empty;
+        }
+
+        private void RenderFeeds()
+        {
+            if (!available) return;
+            Render(cameraA, rtA, requestA);
+            Render(cameraB, rtB, requestB);
+        }
+
+        private static void Render(Camera cam, RenderTexture rt, RenderPipeline.StandardRequest request)
+        {
+            if (cam == null || rt == null) return;
+            if (RenderPipeline.SupportsRenderRequest(cam, request)) RenderPipeline.SubmitRenderRequest(cam, request);
+            else { cam.targetTexture = rt; cam.Render(); cam.targetTexture = null; }
         }
 
         // ------------------------------------------------------- interaction
@@ -143,10 +209,11 @@ namespace Voss.Narrative
             var ui = UIManager.Instance;
             if (!available)
             {
-                gm?.Subtitles.Show("The screen is dark. Nothing to watch yet.", 2.2f);
+                gm?.Subtitles.Show("The screens are dark. Nothing to watch yet.", 2.2f);
                 return;
             }
-            if (ui == null) return;
+            if (ui == null || frozen) return;
+            controlsOpen = true;
             gm?.Audio.PlayAt(SfxId.TerminalActivate, transform.position, 0.6f);
             ui.VideoControls.Open(this, OnControlsClosed);
         }
@@ -154,6 +221,7 @@ namespace Voss.Narrative
         private void OnControlsClosed()
         {
             Pause();
+            controlsOpen = false;
         }
 
         // ----------------------------------------------------- video control
@@ -187,26 +255,20 @@ namespace Voss.Narrative
             GameManager.Instance?.Audio.Play(SfxId.Click, 0.5f);
         }
 
+        /// <summary>Both screens always play; this moves the focus (status line, bright caption) between them.</summary>
         public void ChangeCamera()
         {
-            SelectCamera(!usingCameraB);
+            usingCameraB = !usingCameraB;
+            if (usingCameraB) viewedCameraB = true;
             GameManager.Instance?.Audio.Play(SfxId.MetalMechanism, 0.4f);
             ApplyFrame(frameIndex);
         }
 
         public string GetStatusLine()
         {
-            string cam = usingCameraB ? "CAMERA B — SECONDARY ANGLE" : "CAMERA A — AUDIENCE VIEW";
+            string cam = usingCameraB ? "FOCUS: CAMERA B — STAGE LEFT" : "FOCUS: CAMERA A — AUDIENCE";
             string state = playing ? "PLAYING" : "PAUSED";
             return $"{cam}    |    FRAME {frameIndex:00} / {frames.Count - 1:00}    |    {state}";
-        }
-
-        private void SelectCamera(bool b)
-        {
-            usingCameraB = b;
-            if (cameraA != null) cameraA.enabled = !b;
-            if (cameraB != null) cameraB.enabled = b;
-            if (b) viewedCameraB = true;
         }
 
         private IEnumerator PlayRoutine()
@@ -222,11 +284,29 @@ namespace Voss.Narrative
             UIManager.Instance?.VideoControls.Refresh();
         }
 
+        /// <summary>Breaks a caption into lines of at most <paramref name="width"/> characters (3D text does not wrap).</summary>
+        private static string Wrap(string text, int width)
+        {
+            if (string.IsNullOrEmpty(text) || text.Length <= width) return text;
+            var sb = new System.Text.StringBuilder(text.Length + 4);
+            int lineLength = 0;
+            foreach (var word in text.Split(' '))
+            {
+                if (lineLength > 0 && lineLength + 1 + word.Length > width) { sb.Append('\n'); lineLength = 0; }
+                else if (lineLength > 0) { sb.Append(' '); lineLength++; }
+                sb.Append(word);
+                lineLength += word.Length;
+            }
+            return sb.ToString();
+        }
+
         private void ApplyFrame(int index)
         {
             if (frames.Count == 0) return;
             frameIndex = Mathf.Clamp(index, 0, frames.Count - 1);
             var f = frames[frameIndex];
+            // Both screens are always in view: reaching the moment of the switch counts as having seen B.
+            if (available && frameIndex >= 4) viewedCameraB = true;
 
             if (vossFigure != null)
             {
@@ -242,7 +322,12 @@ namespace Voss.Narrative
                 if (projectionQuad != null) projectionQuad.enabled = f.projectionAlpha > 0.01f;
             }
             foreach (var l in stageLights) if (l != null) l.enabled = f.stageLit;
-            if (caption != null) caption.text = usingCameraB ? f.captionB : f.captionA;
+            if (available)
+            {
+                if (captionA != null) { captionA.text = Wrap(f.captionA, 44); captionA.color = usingCameraB ? CaptionDim : CaptionFocus; }
+                if (captionB != null) { captionB.text = Wrap(f.captionB, 44); captionB.color = usingCameraB ? CaptionFocus : CaptionDim; }
+            }
+            RenderFeeds();
         }
     }
 }

@@ -8,6 +8,9 @@ namespace Voss.Player
     /// <summary>Centre-screen raycast that finds IInteractable targets and drives the HUD prompt.</summary>
     public class PlayerInteractor : MonoBehaviour
     {
+        private string lastVerb;
+        private string lastPrompt = string.Empty;
+
         [SerializeField] private Camera viewCamera;
         [SerializeField] private float interactDistance = 3.0f;
         [SerializeField] private LayerMask interactMask = ~0;
@@ -58,7 +61,14 @@ namespace Voss.Player
             if (current != null)
             {
                 string verb = current.GetInteractionPrompt();
-                ui.SetPrompt(string.IsNullOrEmpty(verb) ? string.Empty : $"[E]  {verb}");
+                // Prompts written as a full sentence ("Press E to inspect") are shown as they are.
+                // The formatted line is rebuilt only when the verb changes (no garbage every frame).
+                if (verb != lastVerb)
+                {
+                    lastVerb = verb;
+                    lastPrompt = string.IsNullOrEmpty(verb) ? string.Empty : verb.StartsWith("Press ") ? verb : $"[E]  {verb}";
+                }
+                ui.SetPrompt(lastPrompt);
                 ui.SetCrosshairHighlight(true);
                 if (VossInput.InteractPressed() && current.CanInteract())
                 {
